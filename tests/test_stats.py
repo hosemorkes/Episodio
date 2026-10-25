@@ -43,7 +43,7 @@ def test_default_period_is_last_seven_days_zero_filled(client):
 
 # --- распределения ---
 
-def test_genres_are_unnested_and_weighted_by_progress(client):
+def test_genres_are_unnested_and_counted_per_title(client):
     create(client, title_ru="А", title_original=None, genres=["драма", "комедия"], current_episode=10)
     create(client, title_ru="Б", title_original=None, genres=["драма"], current_episode=5)
     create(client, title_ru="В", title_original=None, genres=[], current_episode=99)
@@ -53,11 +53,24 @@ def test_genres_are_unnested_and_weighted_by_progress(client):
     assert set(genres) == {"драма", "комедия"}
 
 
-def test_genres_sorted_by_progress_then_items_then_name(client):
+def test_genres_sorted_by_items_then_progress_then_name(client):
     create(client, title_ru="А", title_original=None, genres=["б"], current_episode=5)
     create(client, title_ru="Б", title_original=None, genres=["а"], current_episode=5)
     create(client, title_ru="В", title_original=None, genres=["в"], current_episode=9)
-    assert [g["name"] for g in get_stats(client)["genres"]] == ["в", "а", "б"]
+    create(client, title_ru="Г", title_original=None, genres=["г"], current_episode=1)
+    create(client, title_ru="Д", title_original=None, genres=["г"], current_episode=1)
+    # два тайтла ("г") обгоняют один, даже если у них меньше серий; при равенстве — больше прогресса, затем имя
+    assert [g["name"] for g in get_stats(client)["genres"]] == ["г", "в", "а", "б"]
+
+
+def test_titles_without_progress_still_count_in_distributions(client):
+    create(client, title_ru="Фильм", title_original=None, category="movie", genres=["драма"], country="США", release_year=2010, status="planned", current_season=None, current_episode=None)
+    create(client, title_ru="Книга", title_original=None, category="book", genres=["драма"], country="США", release_year=2010, current_season=None, current_episode=None)
+    body = get_stats(client)
+    assert body["genres"] == [{"name": "драма", "items": 2, "progress": 0}]
+    assert body["countries"] == [{"name": "США", "items": 2, "progress": 0}]
+    assert body["years"] == [{"year": 2010, "items": 2, "progress": 0}]
+    assert body["top_items"] == []
 
 
 def test_limit_applies_to_genres_countries_and_top(client):

@@ -99,15 +99,15 @@ describe("watchHours", () => {
 });
 
 describe("yearBars", () => {
-  it("складывает прогресс по периодам года выхода", () => {
+  it("складывает число тайтлов по периодам года выхода, прогресс не влияет", () => {
     const years = [
       { year: 2005, items: 1, progress: 3 },
-      { year: 2009, items: 1, progress: 2 },
-      { year: 2012, items: 1, progress: 7 },
+      { year: 2009, items: 1, progress: 0 },
+      { year: 2012, items: 4, progress: 7 },
       { year: 2021, items: 2, progress: 10 },
       { year: 2025, items: 1, progress: 1 },
     ];
-    expect(yearBars(years)).toEqual([5, 7, 0, 10, 1]);
+    expect(yearBars(years)).toEqual([2, 4, 0, 2, 1]);
   });
   it("пустой список — пять нулей", () => {
     expect(yearBars([])).toEqual([0, 0, 0, 0, 0]);
@@ -115,8 +115,8 @@ describe("yearBars", () => {
 });
 
 describe("isStatsEmpty", () => {
-  it("пусто, пока нет ни одного тайтла с прогрессом", () => {
+  it("пусто только без записей: тайтлы без прогресса диаграммы наполняют", () => {
     expect(isStatsEmpty(stats())).toBe(true);
-    expect(isStatsEmpty(stats({ top: [{ id: 1, title: "Т", type: "series", progress: 3 }] }))).toBe(false);
+    expect(isStatsEmpty(stats({ totalItems: 3, top: [] }))).toBe(false);
   });
 });

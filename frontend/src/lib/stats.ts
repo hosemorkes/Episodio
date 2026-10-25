@@ -41,12 +41,12 @@ export function totalsOf(items: Title[]): StatsMarks {
 /** Приблизительные часы просмотра: серия ≈ 24 минуты (главы и фильмы в часы не переводятся) */
 export const watchHours = (episodes: number) => Math.round((episodes * 24) / 60);
 
-/** Прогресс по периодам года выхода (столбцы «Годы выхода», подписи — YEAR_BUCKETS) */
+/** Число тайтлов по периодам года выхода (столбцы «Годы выхода», подписи — YEAR_BUCKETS) */
 export function yearBars(years: Stats["years"]): number[] {
   const bars = YEAR_BUCKETS.map(() => 0);
-  years.forEach((y) => (bars[yearBucket(y.year)] += y.progress));
+  years.forEach((y) => (bars[yearBucket(y.year)] += y.items));
   return bars;
 }
 
-/** В библиотеке нет ни одной отметки прогресса: графики были бы пустыми */
-export const isStatsEmpty = (s: Stats) => s.top.length === 0;
+/** В библиотеке нет ни одной записи: считать нечего (диаграммы строятся по числу тайтлов, прогресс не нужен) */
+export const isStatsEmpty = (s: Stats) => s.totalItems === 0;

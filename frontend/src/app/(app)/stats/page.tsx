@@ -47,17 +47,17 @@ export default function StatsPage() {
         <PageHeader kicker={t("Wrapped круглый год")} title={t("Статистика")} />
         <Block className="flex flex-col items-center gap-2 py-12 text-center">
           <div className="font-display text-xl font-semibold">{t("Пока нечего считать")}</div>
-          <div className="text-sm text-muted">{t("Отметьте серию или главу, и здесь появятся жанры, страны и топ.")}</div>
+          <div className="text-sm text-muted">{t("Добавьте первый тайтл, и здесь появятся жанры, страны и годы выхода.")}</div>
         </Block>
       </>
     );
   }
 
   const lc = (i: number) => staggered(P, i);
-  // Вес жанров, стран и годов — просмотренные серии, прочитанные главы и просмотренные фильмы
-  const genres = stats.genres.map((g) => [g.name, g.progress] as [string, number]);
+  // Жанры, страны и годы считаются по числу тайтлов (каждая карточка = 1), поэтому фильмы и книги тоже учтены
+  const genres = stats.genres.map((g) => [g.name, g.items] as [string, number]);
   const gTotal = genres.reduce((a, b) => a + b[1], 0) || 1;
-  const countries = stats.countries.map((c) => [c.name, c.progress] as [string, number]);
+  const countries = stats.countries.map((c) => [c.name, c.items] as [string, number]);
   const cTotal = countries.reduce((a, b) => a + b[1], 0) || 1;
   const cMax = countries[0]?.[1] || 1;
   const buckets = yearBars(stats.years).map((v, i) => [YEAR_BUCKETS[i], v] as [string, number]);
@@ -126,6 +126,7 @@ export default function StatsPage() {
 
         <Block className="flex flex-col gap-2.5">
           <div className="font-display text-base font-semibold">{t("Топ по сериям")}</div>
+          {!top.length && <div className="text-sm text-muted">{t("Пока нет отмеченных серий и глав.")}</div>}
           {top.map((it, i) => (
             <div key={it.id} className="flex items-center gap-3" style={{ opacity: lc(i), transform: `translateX(${(1 - lc(i)) * 16}px)` }}>
               <span className="w-[22px] font-display text-lg font-bold text-acc">{i + 1}</span>

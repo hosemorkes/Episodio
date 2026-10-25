@@ -64,7 +64,8 @@ const EXTRA: Record<string, string> = {
   "Ваши впечатления, рецензия или заметка": "Your impressions, review or note",
   "Последняя заметка": "Latest note",
   "Пока нечего считать": "Nothing to count yet",
-  "Отметьте серию или главу, и здесь появятся жанры, страны и топ.": "Mark an episode or chapter and genres, countries and the top will show up here.",
+  "Добавьте первый тайтл, и здесь появятся жанры, страны и годы выхода.": "Add your first title and genres, countries and release years will show up here.",
+  "Пока нет отмеченных серий и глав.": "No episodes or chapters marked yet.",
   "Прочитано глав: ": "Chapters read: ",
   // Ручное обогащение (этап 6)
   "Найти данные": "Find data",

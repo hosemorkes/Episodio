@@ -46,7 +46,7 @@ def _distribution(db: Session, name, limit: Optional[int], *, skip_empty: bool =
     query = select(name.label("name"), items.label("items"), progress.label("progress")).where(name.is_not(None))
     if skip_empty:
         query = query.where(name != "")
-    query = query.group_by(name).order_by(progress.desc(), items.desc(), name)
+    query = query.group_by(name).order_by(items.desc(), progress.desc(), name)
     if limit:
         query = query.limit(limit)
     return [{"name": r.name, "items": r.items, "progress": int(r.progress)} for r in db.execute(query)]
@@ -61,7 +61,7 @@ def _genres(db: Session, limit: int) -> list[dict]:
         select(sub.c.name, items.label("items"), progress.label("progress"))
         .where(sub.c.name != "")
         .group_by(sub.c.name)
-        .order_by(progress.desc(), items.desc(), sub.c.name)
+        .order_by(items.desc(), progress.desc(), sub.c.name)
         .limit(limit)
     )
     return [{"name": r.name, "items": r.items, "progress": int(r.progress)} for r in db.execute(query)]
