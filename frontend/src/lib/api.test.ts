@@ -15,10 +15,12 @@ import {
   toCatalogResult,
   toEnrichCandidate,
   toLogEntry,
+  toStats,
   toTitle,
   typeFromApi,
   type ApiCatalogResult,
   type ApiEnrichCandidate,
+  type ApiStats,
   type ApiItem,
 } from "./api";
 import { TYPES } from "./rules";
@@ -168,6 +170,47 @@ describe("обогащение: адаптер", () => {
       en: undefined,
       author: "Автор",
     });
+  });
+});
+
+const apiStats = (over: Partial<ApiStats> = {}): ApiStats => ({
+  period_from: "2026-10-19",
+  period_to: "2026-10-25",
+  total_items: 3,
+  genres: [{ name: "драма", items: 2, progress: 15 }],
+  countries: [{ name: "США", items: 2, progress: 15 }],
+  categories: [{ name: "tv_series", items: 3, progress: 15 }],
+  statuses: [{ name: "watching", items: 3, progress: 15 }],
+  years: [{ year: 2007, items: 2, progress: 15 }],
+  top_items: [{ item_id: 7, title_ru: "Калифорния", title_original: "Californication", category: "tv_series", progress: 12 }],
+  totals: { episodes: 15, chapters: 0, movies: 0 },
+  activity: [{ date: "2026-10-19", count: 2 }],
+  marks: { episodes: 2, chapters: 0, movies: 0 },
+  ...over,
+});
+
+describe("статистика: адаптер", () => {
+  it("toStats: период, жанры с заглавной, топ с типом интерфейса", () => {
+    expect(toStats(apiStats())).toEqual({
+      from: "2026-10-19",
+      to: "2026-10-25",
+      totalItems: 3,
+      genres: [{ name: "Драма", items: 2, progress: 15 }],
+      countries: [{ name: "США", items: 2, progress: 15 }],
+      years: [{ year: 2007, items: 2, progress: 15 }],
+      top: [{ id: 7, title: "Калифорния", en: "Californication", type: "series", progress: 12 }],
+      totals: { episodes: 15, chapters: 0, movies: 0 },
+      activity: [{ date: "2026-10-19", count: 2 }],
+      marks: { episodes: 2, chapters: 0, movies: 0 },
+    });
+  });
+  it("пустая база: пустые списки и нули", () => {
+    const s = toStats(apiStats({ total_items: 0, genres: [], countries: [], years: [], top_items: [], activity: [], totals: { episodes: 0, chapters: 0, movies: 0 } }));
+    expect(s).toMatchObject({ totalItems: 0, genres: [], top: [], totals: { episodes: 0, chapters: 0, movies: 0 } });
+  });
+  it("неизвестная категория в топе не ломает адаптер", () => {
+    const s = toStats(apiStats({ top_items: [{ item_id: 1, title_ru: "X", title_original: null, category: "podcast" as ApiStats["top_items"][0]["category"], progress: 1 }] }));
+    expect(s.top[0]).toMatchObject({ type: "series", en: undefined });
   });
 });
 
@@ -515,6 +558,24 @@ describe("клиент", () => {
       await expect(api.applyCandidate(7, "tmdb", "1")).rejects.toMatchObject({ status, message: detail });
       await expect(api.listCandidates(7)).rejects.toMatchObject({ status, message: detail });
     }
+  });
+
+  it("getStats: период и лимит уходят в запрос, ответ в типах интерфейса", async () => {
+    const fn = stub(respond(200, apiStats()));
+    const s = await api.getStats({ from: "2026-10-19", to: "2026-10-25", limit: 10 });
+    expect(fn.mock.calls[0][0]).toBe("/api/backend/stats?from=2026-10-19&to=2026-10-25&limit=10");
+    expect(s.top[0]).toMatchObject({ id: 7, type: "series" });
+  });
+
+  it("getStats без параметров не добавляет строку запроса", async () => {
+    const fn = stub(respond(200, apiStats()));
+    await api.getStats();
+    expect(fn.mock.calls[0][0]).toBe("/api/backend/stats");
+  });
+
+  it("getStats: ошибка периода 422 приходит с текстом сервера", async () => {
+    stub(respond(422, { detail: "Начало периода позже его конца" }));
+    await expect(api.getStats({ from: "2026-10-25", to: "2026-10-19" })).rejects.toMatchObject({ status: 422, message: "Начало периода позже его конца" });
   });
 
   it("deleteItem принимает 204", async () => {

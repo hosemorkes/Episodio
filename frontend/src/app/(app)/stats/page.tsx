@@ -1,20 +1,23 @@
 "use client";
 
 import { PageHeader } from "@/components/PageHeader";
-import { Block, CHART, Skeleton } from "@/components/ui";
+import { Block, CHART, GhostButton, Skeleton } from "@/components/ui";
 import { easeOutCubic, staggered, useRunProgress } from "@/lib/anim";
 import { useLang, useT } from "@/lib/i18n";
-import { displayName, tally, unitOf, YEAR_BUCKETS, yearBucket } from "@/lib/rules";
+import { displayName, unitOf, YEAR_BUCKETS } from "@/lib/rules";
+import { isStatsEmpty, yearBars } from "@/lib/stats";
 import { useStore } from "@/lib/store";
+import { useStats } from "@/lib/useStats";
 
 export default function StatsPage() {
   const t = useT();
   const lang = useLang();
-  const { items, hydrated } = useStore();
-  // Анимация 1.8 c запускается при каждом открытии страницы и сбрасывается при уходе
-  const P = useRunProgress(1.8, 0.15);
+  const hydrated = useStore((s) => s.hydrated);
+  const { stats, statsError, reload } = useStats();
+  // Анимация 1.8 c запускается при каждом открытии страницы (когда данные есть) и сбрасывается при уходе
+  const P = useRunProgress(1.8, 0.15, !!stats && !isStatsEmpty(stats));
 
-  if (!hydrated) {
+  if (!hydrated || (!stats && !statsError)) {
     return (
       <>
         <PageHeader kicker={t("Wrapped круглый год")} title={t("Статистика")} />
@@ -27,16 +30,39 @@ export default function StatsPage() {
     );
   }
 
+  if (!stats) {
+    return (
+      <>
+        <PageHeader kicker={t("Wrapped круглый год")} title={t("Статистика")} />
+        <Block className="flex flex-wrap items-center justify-between gap-3">
+          <div role="alert" className="text-sm">{statsError}</div>
+          <GhostButton onClick={() => void reload()}>{t("Повторить")}</GhostButton>
+        </Block>
+      </>
+    );
+  }
+  if (isStatsEmpty(stats)) {
+    return (
+      <>
+        <PageHeader kicker={t("Wrapped круглый год")} title={t("Статистика")} />
+        <Block className="flex flex-col items-center gap-2 py-12 text-center">
+          <div className="font-display text-xl font-semibold">{t("Пока нечего считать")}</div>
+          <div className="text-sm text-muted">{t("Отметьте серию или главу, и здесь появятся жанры, страны и топ.")}</div>
+        </Block>
+      </>
+    );
+  }
+
   const lc = (i: number) => staggered(P, i);
-  const genres = tally(items, (it) => it.g);
+  // Вес жанров, стран и годов — просмотренные серии, прочитанные главы и просмотренные фильмы
+  const genres = stats.genres.map((g) => [g.name, g.progress] as [string, number]);
   const gTotal = genres.reduce((a, b) => a + b[1], 0) || 1;
-  const countries = tally(items, (it) => [it.c]);
+  const countries = stats.countries.map((c) => [c.name, c.progress] as [string, number]);
   const cTotal = countries.reduce((a, b) => a + b[1], 0) || 1;
   const cMax = countries[0]?.[1] || 1;
-  const buckets = YEAR_BUCKETS.map((l) => [l, 0] as [string, number]);
-  items.forEach((it) => (buckets[yearBucket(it.y)][1] += it.ep));
+  const buckets = yearBars(stats.years).map((v, i) => [YEAR_BUCKETS[i], v] as [string, number]);
   const bMax = Math.max(1, ...buckets.map((b) => b[1]));
-  const top = [...items].sort((a, b) => b.ep - a.ep).slice(0, 5);
+  const top = stats.top.slice(0, 5);
 
   // Кольцо «собирается» по дуге: cut — сколько процентов окружности уже нарисовано
   const cut = easeOutCubic(Math.min(1, P)) * 100;
@@ -103,9 +129,9 @@ export default function StatsPage() {
           {top.map((it, i) => (
             <div key={it.id} className="flex items-center gap-3" style={{ opacity: lc(i), transform: `translateX(${(1 - lc(i)) * 16}px)` }}>
               <span className="w-[22px] font-display text-lg font-bold text-acc">{i + 1}</span>
-              <span className="flex-1 truncate text-sm">{displayName(it, lang)}</span>
+              <span className="flex-1 truncate text-sm">{displayName({ t: it.title, en: it.en }, lang)}</span>
               <span className="font-display text-sm font-semibold text-muted">
-                {Math.round(it.ep * lc(i))}
+                {Math.round(it.progress * lc(i))}
                 {unitOf(it.type, t).short}
               </span>
             </div>

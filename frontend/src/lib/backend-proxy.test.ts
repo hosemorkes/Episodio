@@ -17,6 +17,7 @@ describe("upstreamUrl", () => {
     expect(upstreamUrl(BASE, ["catalog", "search"], "?q=%D0%A4&category=anime")).toBe(`${BASE}/catalog/search?q=%D0%A4&category=anime`);
     expect(upstreamUrl(BASE, ["items", "from-catalog"])).toBe(`${BASE}/items/from-catalog`);
     expect(upstreamUrl(BASE, ["log"], "?limit=20&before=5")).toBe(`${BASE}/log?limit=20&before=5`);
+    expect(upstreamUrl(BASE, ["stats"], "?from=2026-10-19&to=2026-10-25")).toBe(`${BASE}/stats?from=2026-10-19&to=2026-10-25`);
     expect(upstreamUrl(BASE, ["posters", "42.jpg"])).toBe(`${BASE}/posters/42.jpg`);
     expect(upstreamUrl(BASE, ["health"])).toBe(`${BASE}/health`);
   });

@@ -95,6 +95,39 @@ export interface EnrichCandidate {
   img?: string;
 }
 
+/** Строка распределения из GET /stats: записей и единиц прогресса (серий, глав, фильмов) */
+export interface StatsRow {
+  name: string;
+  items: number;
+  progress: number;
+}
+
+/** Серии, главы и фильмы считаются раздельно */
+export interface StatsMarks {
+  episodes: number;
+  chapters: number;
+  movies: number;
+}
+
+/** Данные экрана «Статистика» и графика «Эта неделя» (GET /stats) */
+export interface Stats {
+  /** период журнала, YYYY-MM-DD включительно */
+  from: string;
+  to: string;
+  totalItems: number;
+  genres: StatsRow[];
+  countries: StatsRow[];
+  years: { year: number; items: number; progress: number }[];
+  /** топ записей по накопленному прогрессу */
+  top: { id: number; title: string; en?: string; type: TitleType; progress: number }[];
+  /** накоплено по библиотеке */
+  totals: StatsMarks;
+  /** отметки журнала по дням периода (пустые дни = 0) */
+  activity: { date: string; count: number }[];
+  /** отметки журнала за период по видам */
+  marks: StatsMarks;
+}
+
 export type LogUnit = "ep" | "ch" | "film";
 
 export interface LogEntry {

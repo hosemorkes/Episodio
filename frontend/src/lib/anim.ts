@@ -10,10 +10,15 @@ export function staggered(p: number, i: number, step = 0.07, span = 0.6) {
   return easeOutCubic(Math.max(0, Math.min(1, (p - i * step) / span)));
 }
 
-/** Прогресс 0 → 1 за duration секунд после delay; перезапускается при каждом монтировании страницы */
-export function useRunProgress(duration = 1.8, delay = 0.15) {
+/** Прогресс 0 → 1 за duration секунд после delay; перезапускается при каждом монтировании страницы.
+ * enabled = false держит 0 (например, пока данные не пришли), анимация стартует, когда он станет true */
+export function useRunProgress(duration = 1.8, delay = 0.15, enabled = true) {
   const [p, setP] = useState(0);
   useEffect(() => {
+    if (!enabled) {
+      setP(0);
+      return;
+    }
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       setP(1);
       return;
@@ -21,6 +26,6 @@ export function useRunProgress(duration = 1.8, delay = 0.15) {
     setP(0);
     const controls = animate(0, 1, { duration, delay, ease: "linear", onUpdate: setP });
     return () => controls.stop();
-  }, [duration, delay]);
+  }, [duration, delay, enabled]);
   return p;
 }

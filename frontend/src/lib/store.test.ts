@@ -12,13 +12,13 @@ vi.hoisted(() => {
 
 vi.mock("./api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./api")>();
-  const names = ["listItems", "getItem", "createItem", "updateItem", "patchItem", "deleteItem", "progress", "listLog", "listGenres", "searchCatalog", "addFromCatalog", "uploadPoster", "deletePoster", "listCandidates", "applyCandidate"];
+  const names = ["listItems", "getItem", "createItem", "updateItem", "patchItem", "deleteItem", "progress", "listLog", "listGenres", "searchCatalog", "addFromCatalog", "uploadPoster", "deletePoster", "listCandidates", "applyCandidate", "getStats"];
   return { ...actual, api: Object.fromEntries(names.map((n) => [n, vi.fn()])) };
 });
 
 import { api, ApiError } from "./api";
 import { draftOf, emptyDraft, useStore } from "./store";
-import type { LogEntry, Title } from "./types";
+import type { LogEntry, Stats, Title } from "./types";
 
 const m = vi.mocked(api);
 
@@ -575,5 +575,65 @@ describe("ручное обогащение", () => {
     m.applyCandidate.mockRejectedValue(new ApiError(502, "Внешний сервис недоступен"));
     await expect(state().enrichApply(1, cand, false)).rejects.toMatchObject({ status: 502 });
     expect(item().img).toBeUndefined();
+  });
+});
+
+describe("статистика", () => {
+  const stat = (over: Partial<Stats> = {}): Stats => ({
+    from: "2026-10-19",
+    to: "2026-10-25",
+    totalItems: 1,
+    genres: [],
+    countries: [],
+    years: [],
+    top: [],
+    totals: { episodes: 0, chapters: 0, movies: 0 },
+    activity: [],
+    marks: { episodes: 0, chapters: 0, movies: 0 },
+    ...over,
+  });
+
+  it("loadStats запрашивает текущую неделю (Пн–Вс) и кладёт ответ в стор", async () => {
+    reset([title()]);
+    useStore.setState({ stats: null, statsError: null });
+    m.getStats.mockResolvedValue(stat({ totalItems: 5 }));
+    await state().loadStats();
+    const opts = m.getStats.mock.calls[0][0] as { from: string; to: string; limit: number };
+    expect(opts.limit).toBe(10);
+    expect(new Date(`${opts.from}T00:00:00`).getDay()).toBe(1);
+    expect(new Date(`${opts.to}T00:00:00`).getDay()).toBe(0);
+    expect(state().stats?.totalItems).toBe(5);
+    expect(state().statsError).toBeNull();
+  });
+
+  it("ошибка: статистика остаётся прежней, текст ошибки сохраняется без тоста", async () => {
+    reset([title()]);
+    useStore.setState({ stats: stat({ totalItems: 7 }), statsError: null });
+    m.getStats.mockRejectedValue(new ApiError(502, "Бэкенд недоступен"));
+    await state().loadStats();
+    expect(state().stats?.totalItems).toBe(7);
+    expect(state().statsError).toBe("Бэкенд недоступен");
+    expect(state().toast).toBe("");
+  });
+
+  it("успешный повтор сбрасывает ошибку", async () => {
+    reset([title()]);
+    useStore.setState({ stats: null, statsError: "Бэкенд недоступен" });
+    m.getStats.mockResolvedValue(stat());
+    await state().loadStats();
+    expect(state().statsError).toBeNull();
+  });
+
+  it("устаревший ответ не затирает более новый", async () => {
+    reset([title()]);
+    useStore.setState({ stats: null, statsError: null });
+    let release: (s: Stats) => void = () => {};
+    m.getStats.mockReturnValueOnce(new Promise<Stats>((r) => (release = r)));
+    m.getStats.mockResolvedValueOnce(stat({ totalItems: 2 }));
+    const first = state().loadStats();
+    await state().loadStats();
+    release(stat({ totalItems: 1 }));
+    await first;
+    expect(state().stats?.totalItems).toBe(2);
   });
 });

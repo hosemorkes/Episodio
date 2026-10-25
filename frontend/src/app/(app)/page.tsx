@@ -8,9 +8,10 @@ import { Block, PrimaryButton, Skeleton } from "@/components/ui";
 import { draftReview } from "@/lib/epi";
 import { useLang, useT } from "@/lib/i18n";
 import { altName, displayName, genreLine, initials, pct, posterBg, unitOf } from "@/lib/rules";
+import { totalsOf, watchHours, weekCounts, weekRange } from "@/lib/stats";
 import { useStore } from "@/lib/store";
+import { useStats } from "@/lib/useStats";
 
-const WEEK_BASE = [2, 1, 3, 0, 2, 4, 3];
 const WEEK_DAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 
 function greeting(hour: number) {
@@ -21,6 +22,7 @@ export default function Dashboard() {
   const t = useT();
   const lang = useLang();
   const { items, log, lastId, hydrated, mark } = useStore();
+  const { stats } = useStats();
 
   if (!hydrated) return <DashboardSkeleton />;
 
@@ -46,11 +48,16 @@ export default function Dashboard() {
   const hero = items.find((x) => x.id === lastId) ?? items.find((x) => x.tot === 0 || x.ep < x.tot) ?? items[0];
   const hu = unitOf(hero.type, t);
   const next = hero.tot > 0 ? Math.min(hero.ep + 1, hero.tot) : hero.ep + 1;
-  const total = items.reduce((a, b) => a + b.ep, 0);
+  // Серии и главы считаются раздельно: главы манги и книг в «серии» не входят
+  const totals = totalsOf(items);
+  const total = totals.episodes;
 
-  const todayIdx = (now.getDay() + 6) % 7;
+  // Отметки по дням недели из журнала на сервере; сегодняшний столбик не отстаёт от только что нажатого «+»
+  const { from, todayIdx } = weekRange(now);
   const todayMarks = log.filter((l) => l.day === "СЕГОДНЯ").length;
-  const week = WEEK_BASE.map((v, i) => (i === todayIdx ? todayMarks : v));
+  const serverWeek = stats && stats.from === from ? weekCounts(stats.activity, from) : Array(7).fill(0);
+  const week = serverWeek.map((v, i) => (i === todayIdx ? Math.max(v, todayMarks) : v));
+  const weekMax = Math.max(4, ...week);
 
   const noted = items.find((x) => x.note);
 
@@ -94,9 +101,15 @@ export default function Dashboard() {
             {total}
           </motion.div>
           <div className="text-[13px] text-acc">
-            ≈ {Math.round((total * 24) / 60)}
+            ≈ {watchHours(total)}
             {t(" ч просмотра")}
           </div>
+          {totals.chapters > 0 && (
+            <div className="text-[13px] text-muted">
+              {t("Прочитано глав: ")}
+              {totals.chapters}
+            </div>
+          )}
         </Block>
 
         <Block className="flex flex-col gap-3">
@@ -106,7 +119,7 @@ export default function Dashboard() {
               <div key={i} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
                 <div
                   className={`w-full rounded-md transition-[height] duration-[400ms] ${i === todayIdx ? "bg-acc" : "bg-acc2/45"}`}
-                  style={{ height: `${Math.max(6, (v / 4) * 100)}%` }}
+                  style={{ height: `${Math.max(6, (v / weekMax) * 100)}%` }}
                 />
                 <span className="text-[10px] text-faint">{t(WEEK_DAYS[i])}</span>
               </div>

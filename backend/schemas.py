@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -125,6 +125,57 @@ class ProgressResponse(BaseModel):
     item: MediaItemResponse
     # +1: созданная запись журнала; −1: удалённая (None, если журнал был пуст)
     entry: Optional[LogEntryResponse] = None
+
+
+class StatsCount(BaseModel):
+    """Строка распределения: сколько записей и сколько единиц прогресса (серий, глав, просмотренных фильмов)."""
+    name: str
+    items: int
+    progress: int
+
+
+class StatsYear(BaseModel):
+    year: int
+    items: int
+    progress: int
+
+
+class StatsTopItem(BaseModel):
+    item_id: int
+    title_ru: str
+    title_original: Optional[str] = None
+    category: Category
+    progress: int
+
+
+class StatsDay(BaseModel):
+    date: date
+    count: int
+
+
+class StatsMarks(BaseModel):
+    """Серии, главы и фильмы раздельно: их нельзя складывать в одно число."""
+    episodes: int
+    chapters: int
+    movies: int
+
+
+class StatsResponse(BaseModel):
+    period_from: date
+    period_to: date
+    total_items: int
+    # Распределения по всей библиотеке; progress — единицы прогресса записей (серии, главы, фильм = 1)
+    genres: list[StatsCount]
+    countries: list[StatsCount]
+    categories: list[StatsCount]
+    statuses: list[StatsCount]
+    years: list[StatsYear]
+    top_items: list[StatsTopItem]
+    # Накоплено по библиотеке (по счётчикам записей, не по журналу)
+    totals: StatsMarks
+    # Журнал за период: отметки по дням (каждый день периода, пустые = 0) и их сумма по видам
+    activity: list[StatsDay]
+    marks: StatsMarks
 
 
 class CatalogResult(BaseModel):

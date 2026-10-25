@@ -7,7 +7,7 @@ export function apiBaseUrl(env: Record<string, string | undefined> = process.env
 }
 
 /** Что можно запрашивать через прокси: остальные пути FastAPI (docs, openapi) наружу не отдаём */
-const ALLOWED_ROOTS = new Set(["items", "genres", "log", "catalog", "posters", "health"]);
+const ALLOWED_ROOTS = new Set(["items", "genres", "log", "stats", "catalog", "posters", "health"]);
 
 /**
  * Адрес запроса к FastAPI или null, если путь не разрешён.

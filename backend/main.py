@@ -2,6 +2,7 @@ import os
 import secrets
 from contextlib import asynccontextmanager
 from dataclasses import asdict
+from datetime import date
 from typing import Literal, Optional
 
 import httpx
@@ -12,7 +13,7 @@ from sqlalchemy import any_, func, literal, or_, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from backend import catalog, posters, progress
+from backend import catalog, posters, progress, stats
 from backend.database import get_db
 from backend.enrich.base import (
     Candidate,
@@ -39,6 +40,7 @@ from backend.schemas import (
     ProgressRequest,
     ProgressResponse,
     Status,
+    StatsResponse,
     normalize_genres,
 )
 
@@ -193,6 +195,20 @@ def list_log(
     if item_id is not None:
         query = query.filter(ProgressLog.item_id == item_id)
     return [row._asdict() for row in query.order_by(ProgressLog.id.desc()).limit(limit)]
+
+
+# Статистика: распределения по библиотеке и активность журнала за период (по умолчанию последние 7 дней)
+@app.get("/stats", response_model=StatsResponse)
+def get_stats(
+    date_from: Optional[date] = Query(None, alias="from", description="Начало периода, YYYY-MM-DD (включительно)"),
+    date_to: Optional[date] = Query(None, alias="to", description="Конец периода, YYYY-MM-DD (включительно, по умолчанию сегодня)"),
+    limit: int = Query(10, ge=1, le=50, description="Сколько строк в жанрах, странах и топе"),
+    db: Session = Depends(get_db),
+):
+    try:
+        return stats.build_stats(db, date_from, date_to, limit)
+    except stats.PeriodError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(e)) from e
 
 
 # 2. Одна запись

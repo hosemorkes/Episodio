@@ -4,7 +4,7 @@
  * откуда запрос уходит в FastAPI вместе с X-API-Key. Компоненты сюда напрямую не обращаются.
  */
 import { hasSeasons, isReading } from "./rules";
-import type { CatalogResult, EnrichCandidate, LogEntry, LogUnit, Title, TitleStatus, TitleType } from "./types";
+import type { CatalogResult, EnrichCandidate, LogEntry, LogUnit, Stats, StatsMarks, StatsRow, Title, TitleStatus, TitleType } from "./types";
 
 // ---------- Форма данных бэкенда (backend/schemas.py) ----------
 
@@ -264,6 +264,38 @@ export function toEnrichCandidate(a: ApiEnrichCandidate): EnrichCandidate {
   };
 }
 
+// ---------- Статистика ----------
+
+export interface ApiStats {
+  period_from: string;
+  period_to: string;
+  total_items: number;
+  genres: StatsRow[];
+  countries: StatsRow[];
+  categories: StatsRow[];
+  statuses: StatsRow[];
+  years: { year: number; items: number; progress: number }[];
+  top_items: { item_id: number; title_ru: string; title_original: string | null; category: ApiCategory; progress: number }[];
+  totals: StatsMarks;
+  activity: { date: string; count: number }[];
+  marks: StatsMarks;
+}
+
+export function toStats(a: ApiStats): Stats {
+  return {
+    from: a.period_from,
+    to: a.period_to,
+    totalItems: a.total_items,
+    genres: a.genres.map((g) => ({ ...g, name: capitalize(g.name) })),
+    countries: a.countries,
+    years: a.years,
+    top: a.top_items.map((t) => ({ id: t.item_id, title: t.title_ru, en: t.title_original ?? undefined, type: typeFromApi(t.category), progress: t.progress })),
+    totals: a.totals,
+    activity: a.activity,
+    marks: a.marks,
+  };
+}
+
 // ---------- Журнал ----------
 
 /** Подпись дня для ленты: СЕГОДНЯ, ВЧЕРА, «N ДНЯ/ДНЕЙ НАЗАД» (до недели), дальше дата «12 ОКТ» */
@@ -377,6 +409,15 @@ export const api = {
     if (opts.before) q.set("before", String(opts.before));
     const now = new Date();
     return (await call<ApiLogEntry[]>(`/log${q.size ? `?${q}` : ""}`)).map((e) => toLogEntry(e, now));
+  },
+
+  /** Статистика: распределения по библиотеке и отметки журнала за период (даты YYYY-MM-DD включительно) */
+  getStats: async (opts: { from?: string; to?: string; limit?: number } = {}): Promise<Stats> => {
+    const q = new URLSearchParams();
+    if (opts.from) q.set("from", opts.from);
+    if (opts.to) q.set("to", opts.to);
+    if (opts.limit) q.set("limit", String(opts.limit));
+    return toStats(await call<ApiStats>(`/stats${q.size ? `?${q}` : ""}`));
   },
 
   /** Жанры из БД для фильтра (с заглавной буквы) */

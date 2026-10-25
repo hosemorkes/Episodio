@@ -63,6 +63,9 @@ const EXTRA: Record<string, string> = {
   "Сохранить заметку": "Save note",
   "Ваши впечатления, рецензия или заметка": "Your impressions, review or note",
   "Последняя заметка": "Latest note",
+  "Пока нечего считать": "Nothing to count yet",
+  "Отметьте серию или главу, и здесь появятся жанры, страны и топ.": "Mark an episode or chapter and genres, countries and the top will show up here.",
+  "Прочитано глав: ": "Chapters read: ",
   // Ручное обогащение (этап 6)
   "Найти данные": "Find data",
   "НАЙТИ ДАННЫЕ": "FIND DATA",

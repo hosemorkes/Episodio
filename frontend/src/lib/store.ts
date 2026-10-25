@@ -5,7 +5,8 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { api, ApiError, CATEGORY_TO_API } from "./api";
 import { translate } from "./i18n-core";
 import { fixSt, hasSeasons, isReading, parseBackup, statusPatch, unitOf } from "./rules";
-import type { CatalogItem, CatalogResult, EnrichCandidate, Lang, LogEntry, Theme, Title, TitleStatus, TitleType } from "./types";
+import { weekRange } from "./stats";
+import type { CatalogItem, CatalogResult, EnrichCandidate, Lang, LogEntry, Stats, Theme, Title, TitleStatus, TitleType } from "./types";
 
 export interface TitleDraft {
   id: number | null;
@@ -44,6 +45,10 @@ interface State {
   loaded: boolean;
   /** текст ошибки последней неудачной загрузки; null — всё в порядке */
   loadError: string | null;
+  /** статистика сервера за текущую неделю (GET /stats); null до первого ответа */
+  stats: Stats | null;
+  /** текст ошибки последней загрузки статистики; null — всё в порядке */
+  statsError: string | null;
   /** id карточки, у которой играет анимация «+» */
   pulse: number | null;
   toast: string;
@@ -56,6 +61,7 @@ interface State {
   load: () => Promise<void>;
   ensureLoaded: () => void;
   loadMoreLog: () => Promise<void>;
+  loadStats: () => Promise<void>;
   mark: (id: number) => void;
   minus: (id: number) => void;
   setStatus: (id: number, st: TitleStatus) => void;
@@ -81,6 +87,8 @@ let pulseTimer: ReturnType<typeof setTimeout> | undefined;
 /** идёт первая/повторная загрузка данных и подгрузка ленты (защита от параллельных запросов) */
 let loading = false;
 let logBusy = false;
+/** номер последнего запроса статистики: ответ на более старый запрос отбрасывается */
+let statsSeq = 0;
 
 const num = (v: string, d: number) => {
   const n = parseInt(v, 10);
@@ -200,6 +208,8 @@ export const useStore = create<State>()(
         hydrated: false,
         loaded: false,
         loadError: null,
+        stats: null,
+        statsError: null,
         pulse: null,
         toast: "",
         palOpen: false,
@@ -248,6 +258,19 @@ export const useStore = create<State>()(
             fail(e);
           } finally {
             logBusy = false;
+          }
+        },
+
+        loadStats: async () => {
+          const seq = ++statsSeq;
+          const { from, to } = weekRange(new Date());
+          try {
+            const stats = await api.getStats({ from, to, limit: 10 });
+            if (seq === statsSeq) set({ stats, statsError: null });
+          } catch (e) {
+            if (seq !== statsSeq) return;
+            set({ statsError: e instanceof ApiError ? e.message : tr("Не удалось загрузить данные") });
+            if (e instanceof ApiError && e.status === 401) fail(e);
           }
         },
 
