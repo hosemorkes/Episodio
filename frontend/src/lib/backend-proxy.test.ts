@@ -19,6 +19,7 @@ describe("upstreamUrl", () => {
     expect(upstreamUrl(BASE, ["log"], "?limit=20&before=5")).toBe(`${BASE}/log?limit=20&before=5`);
     expect(upstreamUrl(BASE, ["stats"], "?from=2026-10-19&to=2026-10-25")).toBe(`${BASE}/stats?from=2026-10-19&to=2026-10-25`);
     expect(upstreamUrl(BASE, ["showcases"])).toBe(`${BASE}/showcases`);
+    expect(upstreamUrl(BASE, ["export"], "?format=xlsx")).toBe(`${BASE}/export?format=xlsx`);
     expect(upstreamUrl(BASE, ["showcases", "preview"])).toBe(`${BASE}/showcases/preview`);
     expect(upstreamUrl(BASE, ["posters", "42.jpg"])).toBe(`${BASE}/posters/42.jpg`);
     expect(upstreamUrl(BASE, ["health"])).toBe(`${BASE}/health`);
@@ -67,5 +68,9 @@ describe("downstreamHeaders", () => {
     expect(h.get("etag")).toBe('"a"');
     expect(h.get("set-cookie")).toBeNull();
     expect(h.get("server")).toBeNull();
+  });
+  it("имя файла выгрузки доходит до браузера", () => {
+    const h = downstreamHeaders(new Headers({ "content-disposition": 'attachment; filename="episodio-2026-10-25.xlsx"' }));
+    expect(h.get("content-disposition")).toBe('attachment; filename="episodio-2026-10-25.xlsx"');
   });
 });

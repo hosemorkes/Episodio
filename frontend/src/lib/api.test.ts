@@ -5,7 +5,10 @@ import {
   CATEGORY_FROM_API,
   CATEGORY_TO_API,
   dayLabel,
+  downloadExport,
   errorMessage,
+  filenameFrom,
+  fromServerExport,
   ITEMS_PAGE,
   posterSrc,
   STATUS_FROM_API,
@@ -267,6 +270,38 @@ describe("витрины: адаптеры", () => {
   it("в карточке нет приватных полей", () => {
     const keys = Object.keys(toShowcaseView(apiShowcaseView()).cards[0]);
     for (const k of ["note", "link", "tr", "id", "ep", "tot", "desc"]) expect(keys).not.toContain(k);
+  });
+});
+
+describe("экспорт: имя файла и формат", () => {
+  it("filenameFrom: имя из заголовка, без пути и опасных символов", () => {
+    expect(filenameFrom('attachment; filename="episodio-2026-10-25.xlsx"')).toBe("episodio-2026-10-25.xlsx");
+    expect(filenameFrom("attachment; filename=episodio.json")).toBe("episodio.json");
+    expect(filenameFrom("attachment; filename*=UTF-8''%D0%BC%D0%BE%D1%8F%20%D0%B1%D0%B0%D0%B7%D0%B0.xlsx")).toBe("моя база.xlsx");
+    expect(filenameFrom('attachment; filename="../../etc/passwd"')).toBe("etcpasswd");
+    expect(filenameFrom('attachment; filename="a:b*c?.xlsx"')).toBe("abc.xlsx");
+    expect(filenameFrom('attachment; filename="100%.xlsx"')).toBe("100%.xlsx"); // некорректная кодировка не роняет разбор
+  });
+  it("filenameFrom: нет заголовка или пустое имя", () => {
+    expect(filenameFrom(null)).toBeNull();
+    expect(filenameFrom("attachment")).toBeNull();
+    expect(filenameFrom('attachment; filename=".."')).toBeNull();
+  });
+
+  it("fromServerExport: записи сервера становятся записями интерфейса", () => {
+    const server = { app: "Episodio", exported_at: "2026-10-25T10:00:00", items: [apiItem({ id: 7, genres: ["драма"] })], log: [{ id: 1 }] };
+    const out = fromServerExport(server) as { items: Title[]; log?: unknown };
+    expect(out.items[0]).toMatchObject({ id: 7, type: "series", t: "Блудливая Калифорния", g: ["Драма"], ep: 5, tot: 12 });
+    expect(out.log).toBeUndefined(); // журнал из файла не восстанавливается
+  });
+  it("fromServerExport: копия интерфейса, массив и мусор возвращаются как есть", () => {
+    const backup = { app: "Episodio", items: [{ t: "Т", g: [], ep: 1, tot: 2 }] };
+    expect(fromServerExport(backup)).toBe(backup);
+    const list = [{ t: "Т" }];
+    expect(fromServerExport(list)).toBe(list);
+    expect(fromServerExport(null)).toBeNull();
+    expect(fromServerExport({ items: [] })).toEqual({ items: [] });
+    expect(fromServerExport("x")).toBe("x");
   });
 });
 
@@ -704,6 +739,34 @@ describe("клиент", () => {
     await expect(api.updateShowcase(1, { slug: "aaa" })).rejects.toMatchObject({ status: 409, message: "Адрес «aaa» уже занят" });
     stub(respond(422, { detail: "Месяц задаётся только вместе с годом" }));
     await expect(api.createShowcase({ title: "Т", type: "all", year: 2026, month: 1, max: 8 })).rejects.toMatchObject({ status: 422 });
+  });
+
+  it("downloadExport: формат в запросе, файл и имя из заголовка, таймаут 60 с", async () => {
+    const spy = vi.spyOn(AbortSignal, "timeout");
+    const res = new Response("PK-binary", { status: 200, headers: { "content-disposition": 'attachment; filename="episodio-2026-10-25.xlsx"' } });
+    const fn = stub(res);
+    const out = await downloadExport("xlsx");
+    expect(fn.mock.calls[0][0]).toBe("/api/backend/export?format=xlsx");
+    expect(out.filename).toBe("episodio-2026-10-25.xlsx");
+    expect(await out.blob.text()).toBe("PK-binary");
+    expect(spy).toHaveBeenCalledWith(60_000);
+    spy.mockRestore();
+  });
+
+  it("downloadExport: без заголовка имя строится из даты и формата", async () => {
+    stub(new Response("{}", { status: 200 }));
+    expect((await downloadExport("json")).filename).toMatch(/^episodio-\d{4}-\d{2}-\d{2}\.json$/);
+  });
+
+  it("downloadExport: ошибки сервера, обрыв связи и зависание", async () => {
+    stub(respond(502, { detail: "Бэкенд недоступен" }));
+    await expect(downloadExport("xlsx")).rejects.toMatchObject({ status: 502, message: "Бэкенд недоступен" });
+    stub(new Response("не json", { status: 500 }));
+    await expect(downloadExport("xlsx")).rejects.toMatchObject({ status: 500, message: "Ошибка сервера (500)" });
+    stub(new TypeError("fetch failed"));
+    await expect(downloadExport("json")).rejects.toMatchObject({ status: 0, message: "Нет связи с сервером" });
+    stub(new DOMException("timed out", "TimeoutError"));
+    await expect(downloadExport("json")).rejects.toMatchObject({ status: 0, message: "Сервер не ответил вовремя" });
   });
 
   it("deleteItem принимает 204", async () => {

@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Block } from "@/components/ui";
+import { ApiError, downloadExport, type ExportFormat } from "@/lib/api";
 import { useLang, useT } from "@/lib/i18n";
 import { exportRows } from "@/lib/rules";
 import { useStore } from "@/lib/store";
@@ -17,11 +18,10 @@ const THEMES: [Theme, string, string, string, string, string][] = [
 const LANGS: [Lang, string][] = [["ru", "Русский"], ["en", "English"]];
 
 const stamp = () => new Date().toISOString().slice(0, 10);
-const esc = (v: unknown) => String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-function download(name: string, mime: string, text: string) {
+function download(name: string, mime: string, content: string | Blob) {
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([text], { type: `${mime};charset=utf-8` }));
+  a.href = URL.createObjectURL(typeof content === "string" ? new Blob([content], { type: `${mime};charset=utf-8` }) : content);
   a.download = name;
   document.body.appendChild(a);
   a.click();
@@ -43,17 +43,29 @@ export default function SettingsPage() {
     markBackup();
     say(t("База сохранена"));
   };
-  const exportJson = () => { download(`episodio-${stamp()}.json`, "application/json", JSON.stringify({ app: "Episodio", exportedAt: new Date().toISOString(), items, log }, null, 2)); saved(); };
+  const [exporting, setExporting] = useState<ExportFormat | null>(null);
+  /** Excel и JSON собирает сервер (GET /export): весь список из базы, а не только загруженная страница */
+  const exportFromServer = async (format: ExportFormat) => {
+    if (exporting) return;
+    setExporting(format);
+    try {
+      const { blob, filename } = await downloadExport(format);
+      download(filename, format === "xlsx" ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : "application/json", blob);
+      saved();
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) {
+        router.replace("/login?next=/settings");
+        return;
+      }
+      say(e instanceof ApiError ? e.message : t("Не удалось выполнить действие"));
+    } finally {
+      setExporting(null);
+    }
+  };
   const exportTxt = () => {
     const { head, body } = exportRows(items, t);
     const text = `Episodio · ${t("Тайтлов: ")}${body.length}\n\n${body.map((r, i) => `${i + 1}. ${r.map((v, k) => (v === "" ? null : `${head[k]}: ${v}`)).filter(Boolean).join("\n   ")}`).join("\n\n")}\n`;
     download(`episodio-${stamp()}.txt`, "text/plain", text);
-    saved();
-  };
-  const exportXls = () => {
-    const { head, body } = exportRows(items, t);
-    const html = `<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"></head><body><table border="1"><tr>${head.map((h) => `<th style="background:#0F172A;color:#fff">${esc(h)}</th>`).join("")}</tr>${body.map((r) => `<tr>${r.map((v) => `<td>${esc(v)}</td>`).join("")}</tr>`).join("")}</table></body></html>`;
-    download(`episodio-${stamp()}.xls`, "application/vnd.ms-excel", `﻿${html}`);
     saved();
   };
 
@@ -138,9 +150,9 @@ export default function SettingsPage() {
         </div>
         <div className="text-[13px] font-semibold">{t("Экспорт")}</div>
         <div className="flex flex-wrap gap-2.5">
-          <button type="button" onClick={exportXls} className={`${btn} border-slate-400/30`}>{t("Экспорт в Excel")}</button>
+          <button type="button" onClick={() => void exportFromServer("xlsx")} disabled={!!exporting} className={`${btn} border-slate-400/30 disabled:opacity-60`}>{exporting === "xlsx" ? t("Готовлю файл…") : t("Экспорт в Excel")}</button>
           <button type="button" onClick={exportTxt} className={`${btn} border-slate-400/30`}>{t("Экспорт в TXT")}</button>
-          <button type="button" onClick={exportJson} className={`${btn} border-slate-400/30`}>{t("Экспорт в JSON")}</button>
+          <button type="button" onClick={() => void exportFromServer("json")} disabled={!!exporting} className={`${btn} border-slate-400/30 disabled:opacity-60`}>{exporting === "json" ? t("Готовлю файл…") : t("Экспорт в JSON")}</button>
         </div>
       </Block>
 

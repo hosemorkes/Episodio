@@ -298,6 +298,51 @@ export function toStats(a: ApiStats): Stats {
   };
 }
 
+// ---------- Экспорт ----------
+
+export type ExportFormat = "xlsx" | "json";
+
+/** Имя файла из заголовка Content-Disposition; без пути и опасных символов. null, если заголовка нет или имя пустое */
+export function filenameFrom(header: string | null): string | null {
+  const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(header ?? "");
+  let raw = match?.[1] ?? "";
+  try {
+    raw = decodeURIComponent(raw);
+  } catch {
+    /* имя не закодировано: берём как есть */
+  }
+  const name = raw.replace(/[\\/:*?"<>|\u0000-\u001f]/g, "").replace(/^\.+/, "").trim();
+  return name || null;
+}
+
+/**
+ * Файл экспорта, собранный сервером (GET /export): Excel или JSON с библиотекой и журналом.
+ * Возвращает содержимое и имя файла; ошибки сервера приходят как ApiError.
+ */
+export async function downloadExport(format: ExportFormat): Promise<{ blob: Blob; filename: string }> {
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}/export?format=${format}`, { signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS) });
+  } catch (e) {
+    throw new ApiError(0, e instanceof Error && e.name === "TimeoutError" ? "Сервер не ответил вовремя" : "Нет связи с сервером");
+  }
+  if (!res.ok) throw new ApiError(res.status, errorMessage(await res.json().catch(() => null), res.status));
+  const today = new Date().toISOString().slice(0, 10);
+  return { blob: await res.blob(), filename: filenameFrom(res.headers.get("content-disposition")) ?? `episodio-${today}.${format}` };
+}
+
+/**
+ * Серверный JSON-экспорт (записи в формате API: title_ru, genres…) превращается в формат копии интерфейса, который
+ * понимает восстановление. Копии в формате интерфейса и всё нераспознанное возвращаются без изменений.
+ */
+export function fromServerExport(data: unknown): unknown {
+  const obj = data as { items?: unknown } | null;
+  if (!obj || typeof obj !== "object" || !Array.isArray(obj.items)) return data;
+  const first = obj.items[0] as { title_ru?: unknown } | undefined;
+  if (!first || typeof first.title_ru !== "string") return data;
+  return { items: (obj.items as ApiItem[]).map(toTitle) };
+}
+
 // ---------- Витрины ----------
 
 export interface ApiShowcase {

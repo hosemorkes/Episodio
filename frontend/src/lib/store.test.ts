@@ -545,6 +545,31 @@ describe("load и лента", () => {
   });
 });
 
+describe("восстановление из JSON-экспорта сервера", () => {
+  const serverItem = (over = {}) => ({
+    id: 3, title_ru: "Берсерк", title_original: "Berserk", category: "manga", genres: ["экшен"], author: "Миура", country: "Япония",
+    release_year: 1989, description: null, status: "watching", current_season: null, current_episode: null, current_volume: 3,
+    current_chapter: 40, total_episodes: null, total_chapters: 364, translation: null, rating: 10, comment: "заметка", poster_url: null,
+    source_link: null, finished_at: null, created_at: "2026-01-01T00:00:00", updated_at: "2026-01-01T00:00:00", ...over,
+  });
+
+  it("записи формата API создаются как обычные тайтлы", async () => {
+    reset([]);
+    m.createItem.mockImplementation(async (it) => title({ id: 99, t: it.t, type: it.type }));
+    const ok = await state().restore({ app: "Episodio", exported_at: "x", items: [serverItem()], log: [] });
+    expect(ok).toBe(true);
+    expect(m.createItem).toHaveBeenCalledTimes(1);
+    expect(m.createItem.mock.calls[0][0]).toMatchObject({ t: "Берсерк", type: "manga", g: ["Экшен"], ep: 40, tot: 364, vol: 3, note: "заметка", rate: 10 });
+  });
+
+  it("копия формата интерфейса по-прежнему принимается", async () => {
+    reset([]);
+    m.createItem.mockResolvedValue(title({ id: 5 }));
+    expect(await state().restore({ app: "Episodio", v: 1, items: [{ t: "Т", type: "series", g: [], ep: 0, tot: 8 }] })).toBe(true);
+    expect(m.createItem).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("ручное обогащение", () => {
   const cand = { key: "tmdb:1", source: "tmdb", extId: "1", t: "Медведь", y: 2022, g: ["Драма"], c: "США" };
 

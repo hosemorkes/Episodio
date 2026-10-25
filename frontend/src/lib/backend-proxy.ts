@@ -7,7 +7,7 @@ export function apiBaseUrl(env: Record<string, string | undefined> = process.env
 }
 
 /** Что можно запрашивать через прокси: остальные пути FastAPI (docs, openapi) наружу не отдаём */
-const ALLOWED_ROOTS = new Set(["items", "genres", "log", "stats", "showcases", "catalog", "posters", "health"]);
+const ALLOWED_ROOTS = new Set(["items", "genres", "log", "stats", "showcases", "export", "catalog", "posters", "health"]);
 
 /**
  * Адрес запроса к FastAPI или null, если путь не разрешён.
@@ -33,10 +33,10 @@ export function upstreamHeaders(incoming: Headers, apiKey?: string): Headers {
   return out;
 }
 
-/** Заголовки ответа, которые стоит отдать браузеру (в первую очередь кэш постеров) */
+/** Заголовки ответа, которые стоит отдать браузеру: кэш постеров и имя файла выгрузки (content-disposition) */
 export function downstreamHeaders(upstream: Headers): Headers {
   const out = new Headers();
-  for (const name of ["content-type", "cache-control", "etag", "last-modified"]) {
+  for (const name of ["content-type", "cache-control", "etag", "last-modified", "content-disposition"]) {
     const v = upstream.get(name);
     if (v) out.set(name, v);
   }

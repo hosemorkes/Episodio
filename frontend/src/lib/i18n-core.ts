@@ -41,6 +41,7 @@ const EXTRA: Record<string, string> = {
   "Найдено в каталогах": "Found in catalogs",
   "В подборке: ": "In the selection: ",
   "Источник": "Source",
+  "Готовлю файл…": "Preparing the file…",
   // Витрины (этап 10)
   "Витрина не найдена": "Showcase not found",
   "ВИТРИНА": "SHOWCASE",

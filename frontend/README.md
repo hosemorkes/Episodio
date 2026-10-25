@@ -55,7 +55,7 @@ src/app/
 src/components/          TitleCard, CatalogCard, TitleForm, TitleDetail, EnrichModal, ReviewList, PublicShowcase, PageHeader, CommandPalette, …
 src/lib/
   store.ts               Zustand: библиотека и лента (копия серверных данных), тема, язык, действия с оптимистичным обновлением
-  rules.ts               чистые правила: статусы, прогресс, подписи, рекомендации, экспорт
+  rules.ts               чистые правила: статусы, прогресс, подписи, рекомендации, TXT-экспорт
   stats.ts, useStats.ts  статистика: неделя, отметки по дням, суммы серий и глав; хук загрузки /stats
   shelves.ts             полки «Обзора» из живой подборки: фильтры, сортировка, жанры, рекомендации
   useCatalogPopular.ts, ttl-cache.ts  загрузка подборки /catalog/popular и кэш с временем жизни
@@ -99,7 +99,7 @@ public/                  sw.js, иконки, брендовые SVG
 
 ## Что дальше
 
-«Эпи» отвечает по правилам — позже LLM с контекстом библиотеки (этап отложен). Серверный экспорт `.xlsx` тоже впереди.
+«Эпи» отвечает по правилам — позже LLM с контекстом библиотеки (этап отложен).
 
 ## Витрины
 
@@ -120,6 +120,15 @@ public/                  sw.js, иконки, брендовые SVG
 - Превью ссылки: `og:title`, `og:description` («Топ из N: 1. …»), `og:url`, `og:image` (первый постер, адрес абсолютный: по заголовкам `x-forwarded-*` или `host`), Twitter-карточка. `?lang=en` включает английский интерфейс страницы. Поисковикам страница закрыта (`noindex`).
 - Имя владельца в ссылке: `PUBLIC_HANDLE` из `.env` (по умолчанию `me`). Это не логин для входа, логин в публичные ссылки не попадает.
 - Единственное исключение из защиты `src/proxy.ts`: адреса вида `/u/<имя>/<адрес>` и `/u/<имя>/<адрес>/poster/<файл>` (`isPublicPath`, строгая проверка, покрыта тестами). На публичных страницах библиотека не загружается: иначе у посетителя была бы 401 и переход на вход.
+
+## Экспорт и резервная копия
+
+В «Настройках → Данные»:
+
+- **Экспорт в Excel** и **Экспорт в JSON** собирает сервер (`GET /export`, функция `downloadExport` в `src/lib/api.ts`): выгружается вся библиотека из базы, а не только загруженная в браузер. Excel: лист на категорию, русские заголовки, настоящие даты, подробнее в корневом [README](../README.md#экспорт). Имя файла приходит от сервера (`episodio-ГГГГ-ММ-ДД.xlsx`), прокси пересылает заголовок `Content-Disposition`; на время подготовки кнопка недоступна и показывает «Готовлю файл…». Ошибки показываются тостом, закончившаяся сессия ведёт на вход.
+- **Экспорт в TXT** по-прежнему собирается в браузере по библиотеке из стора (`exportRows` в `src/lib/rules.ts`).
+- **Сохранить базу данных** и **Восстановить из файла**: копия в формате интерфейса собирается в браузере. Восстановление принимает и её, и серверный JSON-экспорт (`fromServerExport` приводит записи API к виду интерфейса); журнал из файла не восстанавливается.
+- Старый «Excel» (HTML с расширением `.xls`) удалён.
 
 ## Статистика
 
@@ -181,7 +190,7 @@ public/                  sw.js, иконки, брендовые SVG
 
 ## Связь с бэкендом
 
-Браузер ходит не в FastAPI, а в свой Next.js: `src/app/api/backend/[...path]/route.ts` пересылает запрос в FastAPI и подставляет заголовок `X-API-Key`. Ключ живёт только на сервере Next.js, в браузер не попадает. Прокси пускает только с действующей сессией (её проверяет `src/proxy.ts`) и только в разделы `items`, `genres`, `log`, `stats`, `showcases`, `catalog`, `posters` и `health`; остальное (`/docs`, `/openapi.json`) закрыто. Постеры из БД (`/posters/42.jpg`) показываются тем же путём: `/api/backend/posters/42.jpg`.
+Браузер ходит не в FastAPI, а в свой Next.js: `src/app/api/backend/[...path]/route.ts` пересылает запрос в FastAPI и подставляет заголовок `X-API-Key`. Ключ живёт только на сервере Next.js, в браузер не попадает. Прокси пускает только с действующей сессией (её проверяет `src/proxy.ts`) и только в разделы `items`, `genres`, `log`, `stats`, `showcases`, `export`, `catalog`, `posters` и `health`; остальное (`/docs`, `/openapi.json`) закрыто. Постеры из БД (`/posters/42.jpg`) показываются тем же путём: `/api/backend/posters/42.jpg`.
 
 Настройки в корневом `.env` (шаблон — `.env.example`):
 
@@ -194,7 +203,7 @@ public/                  sw.js, иконки, брендовые SVG
 Как устроен `src/lib/api.ts`:
 
 - **Адаптеры** (чистые функции, покрыты тестами): `toTitle` (БД → карточка интерфейса), `toApiFields` (карточка → поля БД для POST и PATCH), `toLogEntry` (запись журнала → строка ленты), `toCatalogResult`, `toEnrichCandidate`, `toStats`, `toShowcase`, `toShowcaseView`. Категория, которой интерфейс не знает, превращается в «сериал» (`typeFromApi`), запись остаётся видимой.
-- **Клиент `api`**: `listItems`, `getItem`, `createItem`, `updateItem`, `patchItem`, `deleteItem`, `progress` (±1 серия или глава), `listLog`, `getStats`, `listGenres`, `searchCatalog`, `popularCatalog`, `addFromCatalog`, `listCandidates`, `applyCandidate`, `listShowcases`, `createShowcase`, `updateShowcase`, `deleteShowcase`, `previewShowcase`, `uploadPoster`, `deletePoster`. Ошибки приходят как `ApiError` с кодом и текстом.
+- **Клиент `api`**: `listItems`, `getItem`, `createItem`, `updateItem`, `patchItem`, `deleteItem`, `progress` (±1 серия или глава), `listLog`, `getStats`, `listGenres`, `searchCatalog`, `popularCatalog`, `addFromCatalog`, `listCandidates`, `applyCandidate`, `downloadExport`, `listShowcases`, `createShowcase`, `updateShowcase`, `deleteShowcase`, `previewShowcase`, `uploadPoster`, `deletePoster`. Ошибки приходят как `ApiError` с кодом и текстом.
 - **Таймауты.** Обычный запрос ждёт 15 секунд, загрузка файла 60, поиск и применение вариантов обогащения 45 (они ходят во внешние API). Зависший сервер даёт `ApiError` со статусом 0 и текстом «Сервер не ответил вовремя».
 
 Соответствие значений:

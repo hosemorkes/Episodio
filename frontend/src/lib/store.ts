@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { api, ApiError, CATEGORY_TO_API } from "./api";
+import { api, ApiError, CATEGORY_TO_API, fromServerExport } from "./api";
 import { translate } from "./i18n-core";
 import { fixSt, hasSeasons, isReading, parseBackup, statusPatch, unitOf } from "./rules";
 import { isPublicPath } from "./guard";
@@ -486,7 +486,7 @@ export const useStore = create<State>()(
         },
         /** Загружает записи из файла копии на сервер; уже существующие (то же название и тип) пропускает */
         restore: async (data) => {
-          const parsed = parseBackup(data);
+          const parsed = parseBackup(fromServerExport(data)); // принимает и копию интерфейса, и JSON-экспорт сервера
           if (!parsed) {
             get().say(tr("Файл не подошёл"));
             return false;
