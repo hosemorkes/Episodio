@@ -1,0 +1,29 @@
+{
+  "id": 2,
+  "name": "Berserk",
+  "russian": "Берсерк",
+  "kind": "manga",
+  "aired_on": "1989-08-25",
+  "genres": [
+    {
+      "id": 56,
+      "name": "Action",
+      "russian": "Экшен",
+      "kind": "genre",
+      "entry_type": "Manga"
+    },
+    {
+      "id": 68,
+      "name": "Adventure",
+      "russian": "Приключения",
+      "kind": "genre",
+      "entry_type": "Manga"
+    }
+  ],
+  "publishers": [
+    {
+      "id": 2,
+      "name": "Young Animal"
+    }
+  ]
+}

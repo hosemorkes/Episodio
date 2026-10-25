@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0F172A">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>:root{--bg:#0F172A;--card:#1E293B;--glass:rgba(30,41,59,.7);--text:#E2E8F0;--text2:#CBD5E1;--muted:#94A3B8;--acc:#2DD4BF;--acc2:#38BDF8;--onacc:#04201C;--line:rgba(148,163,184,.14);--shadow:none;--err:#F87171}html[data-theme=light]{--bg:#F8FAFC;--card:#FFFFFF;--glass:#FFFFFF;--text:#0F172A;--text2:#334155;--muted:#64748B;--acc:#0D9488;--acc2:#0284C7;--onacc:#FFFFFF;--line:#E2E8F0;--shadow:0 1px 2px rgba(15,23,42,.06),0 8px 24px rgba(15,23,42,.06);--err:#DC2626}body{margin:0;background:var(--bg)}*{box-sizing:border-box}a{color:var(--acc)}a:hover{color:var(--acc2)}@keyframes spin{to{transform:rotate(360deg)}}@keyframes rise{0%{transform:translateY(12px) scale(.98);opacity:0}100%{transform:none;opacity:1}}@keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}</style>
+</helmet>
+<div style="min-height:100vh;background:radial-gradient(800px 480px at 80% -10%,color-mix(in srgb,var(--acc) 16%,transparent),transparent),radial-gradient(600px 400px at 0% 110%,color-mix(in srgb,var(--acc2) 12%,transparent),transparent),var(--bg);color:var(--text);font-family:Inter,sans-serif;display:flex;align-items:center;justify-content:center;padding:calc(24px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom))">
+  <div style="width:100%;max-width:420px;display:flex;flex-direction:column;gap:28px;animation:rise .4s both">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center">
+      <div style="width:56px;height:56px;border-radius:18px;background:var(--card);border:1px solid color-mix(in srgb,var(--acc) 50%,transparent);display:flex;align-items:center;justify-content:center;font:700 28px Geist,sans-serif;color:var(--acc);box-shadow:0 0 28px color-mix(in srgb,var(--acc) 35%,transparent)">E</div>
+      <div>
+        <h1 style="margin:0;font:700 30px Geist,sans-serif;letter-spacing:-.03em">{{ t.title }}</h1>
+        <div style="margin-top:6px;font-size:15px;color:var(--muted)">{{ t.sub }}</div>
+      </div>
+    </div>
+    <form onSubmit="{{ submit }}" style="border-radius:26px;padding:24px;background:var(--glass);backdrop-filter:blur(16px);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:16px;animation:{{ shake }}">
+      <label style="display:flex;flex-direction:column;gap:6px">
+        <span style="font-size:13px;color:var(--muted)">{{ t.login }}</span>
+        <input value="{{ login }}" onInput="{{ setLogin }}" type="text" autocomplete="username" autocapitalize="none" placeholder="{{ t.loginPh }}" style="all:unset;box-sizing:border-box;width:100%;height:52px;padding:0 16px;border-radius:14px;background:var(--bg);border:1px solid {{ loginBd }};font:500 16px Inter,sans-serif;color:var(--text)" style-focus="border-color:var(--acc)">
+      </label>
+      <label style="display:flex;flex-direction:column;gap:6px">
+        <span style="font-size:13px;color:var(--muted)">{{ t.password }}</span>
+        <div style="position:relative">
+          <input value="{{ password }}" onInput="{{ setPassword }}" type="{{ pwType }}" autocomplete="current-password" placeholder="••••••••" style="all:unset;box-sizing:border-box;width:100%;height:52px;padding:0 64px 0 16px;border-radius:14px;background:var(--bg);border:1px solid {{ pwBd }};font:500 16px Inter,sans-serif;color:var(--text)" style-focus="border-color:var(--acc)">
+          <button type="button" onClick="{{ togglePw }}" aria-label="{{ t.show }}" style="all:unset;cursor:pointer;position:absolute;right:4px;top:4px;height:44px;min-width:52px;display:flex;align-items:center;justify-content:center;border-radius:10px;font:600 13px Geist,sans-serif;color:var(--muted)" style-hover="color:var(--acc)">{{ pwToggleLabel }}</button>
+        </div>
+      </label>
+      <sc-if value="{{ error }}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:var(--err);margin-top:-6px">{{ error }}</div></sc-if>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <button type="button" onClick="{{ toggleRemember }}" style="all:unset;cursor:pointer;min-height:44px;display:flex;align-items:center;gap:10px;font-size:14px;color:var(--text2)">
+          <span style="width:22px;height:22px;border-radius:7px;border:1.5px solid {{ remBd }};background:{{ remBg }};display:flex;align-items:center;justify-content:center;font:700 14px Geist,sans-serif;color:var(--onacc);transition:.15s">{{ remMark }}</span>{{ t.remember }}
+        </button>
+        <a href="#" onClick="{{ forgot }}" style="display:flex;align-items:center;min-height:44px;font-size:14px;text-decoration:none">{{ t.forgot }}</a>
+      </div>
+      <button type="submit" style="all:unset;cursor:pointer;height:54px;display:flex;align-items:center;justify-content:center;gap:10px;border-radius:16px;background:var(--acc);color:var(--onacc);font:600 16px Geist,sans-serif;box-shadow:0 0 24px color-mix(in srgb,var(--acc) 40%,transparent);transition:.2s" style-hover="box-shadow:0 0 34px color-mix(in srgb,var(--acc) 65%,transparent)">
+        <sc-if value="{{ busy }}" hint-placeholder-val="{{ false }}"><span style="width:18px;height:18px;border-radius:50%;border:2px solid color-mix(in srgb,var(--onacc) 30%,transparent);border-top-color:var(--onacc);animation:spin .7s linear infinite"></span></sc-if>{{ btnLabel }}
+      </button>
+    </form>
+    <div style="display:flex;justify-content:center;gap:8px;font-size:14px;color:var(--muted)">{{ t.noAcc }}<a href="#" onClick="{{ register }}" style="font-weight:600;text-decoration:none">{{ t.reg }}</a></div>
+    <sc-if value="{{ note }}" hint-placeholder-val="{{ false }}"><div style="align-self:center;padding:10px 16px;border-radius:12px;background:var(--glass);border:1px solid color-mix(in srgb,var(--acc) 40%,transparent);font-size:13px;color:var(--text2)">{{ note }}</div></sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { login:'', password:'', show:false, remember:true, busy:false, error:'', note:'', bad:false, shaking:false,
+    lang:(function(){try{return localStorage.getItem('episodio-lang')==='en'?'en':'ru';}catch(e){return 'ru';}})() };
+  T={ru:{title:'С возвращением',sub:'Войдите в Episodio, чтобы продолжить просмотр',login:'Логин или email',loginPh:'name@example.com',password:'Пароль',show:'Показать пароль',showL:'Показать',hide:'Скрыть',remember:'Запомнить меня',forgot:'Забыли пароль?',btn:'Войти',busy:'Входим…',noAcc:'Нет аккаунта?',reg:'Создать',eLogin:'Введите логин',ePass:'Введите пароль',eShort:'Пароль не короче 4 символов',nForgot:'Ссылка для сброса пароля будет отправлена на почту',nReg:'Регистрация появится позже'},
+    en:{title:'Welcome back',sub:'Sign in to Episodio to keep tracking',login:'Login or email',loginPh:'name@example.com',password:'Password',show:'Show password',showL:'Show',hide:'Hide',remember:'Remember me',forgot:'Forgot password?',btn:'Sign in',busy:'Signing in…',noAcc:'No account?',reg:'Create one',eLogin:'Enter your login',ePass:'Enter your password',eShort:'Password must be at least 4 characters',nForgot:'A reset link will be sent to your email',nReg:'Sign-up is coming soon'}};
+  componentDidMount(){ let th='dark'; try{ th=localStorage.getItem('episodio-theme')==='light'?'light':'dark'; }catch(e){} document.documentElement.setAttribute('data-theme',th); document.documentElement.setAttribute('lang',this.state.lang);
+    const m=document.querySelector('meta[name=theme-color]'); if(m) m.setAttribute('content',th==='light'?'#F8FAFC':'#0F172A'); }
+  say(n){ this.setState({note:n}); clearTimeout(this.nt); this.nt=setTimeout(()=>this.setState({note:''}),2500); }
+  submit=(e)=>{ e&&e.preventDefault&&e.preventDefault(); const s=this.state, t=this.T[s.lang]; if(s.busy) return;
+    const err=!s.login.trim()?t.eLogin:!s.password?t.ePass:s.password.length<4?t.eShort:'';
+    if(err){ this.setState({error:err,bad:true,shaking:true}); setTimeout(()=>this.setState({shaking:false}),500); return; }
+    this.setState({busy:true,error:'',bad:false});
+    setTimeout(()=>{ try{ (s.remember?localStorage:sessionStorage).setItem('episodio-user',JSON.stringify({login:s.login.trim(),at:Date.now()})); }catch(x){} location.href='Episodio.dc.html'; },900); };
+  renderVals(){
+    const s=this.state, t=this.T[s.lang], badL=s.bad&&!s.login.trim(), badP=s.bad&&(!s.password||s.password.length<4);
+    return { t, login:s.login, password:s.password, error:s.error, note:s.note, busy:s.busy,
+      setLogin:e=>this.setState({login:e.target.value,error:'',bad:false}), setPassword:e=>this.setState({password:e.target.value,error:'',bad:false}),
+      pwType:s.show?'text':'password', pwToggleLabel:s.show?t.hide:t.showL, togglePw:()=>this.setState({show:!s.show}),
+      loginBd:badL?'var(--err)':'rgba(148,163,184,.28)', pwBd:badP?'var(--err)':'rgba(148,163,184,.28)',
+      toggleRemember:()=>this.setState({remember:!s.remember}), remBd:s.remember?'var(--acc)':'rgba(148,163,184,.5)', remBg:s.remember?'var(--acc)':'transparent', remMark:s.remember?'✓':'',
+      btnLabel:s.busy?t.busy:t.btn, shake:s.shaking?'shake .4s both':'none', submit:this.submit,
+      forgot:e=>{e.preventDefault();this.say(t.nForgot);}, register:e=>{e.preventDefault();this.say(t.nReg);} }; }
+}
+</script>
+</body>
+</html>

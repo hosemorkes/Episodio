@@ -1,0 +1,21 @@
+[
+  {
+    "id": 2,
+    "name": "Berserk",
+    "russian": "Берсерк",
+    "image": {
+      "original": "/system/mangas/original/2.jpg?1712722988",
+      "preview": "/system/mangas/preview/2.jpg?1712722988",
+      "x96": "/system/mangas/x96/2.jpg?1712722988",
+      "x48": "/system/mangas/x48/2.jpg?1712722988"
+    },
+    "url": "/mangas/2-berserk",
+    "kind": "manga",
+    "score": "9.46",
+    "status": "ongoing",
+    "volumes": 0,
+    "chapters": 0,
+    "aired_on": "1989-08-25",
+    "released_on": null
+  }
+]

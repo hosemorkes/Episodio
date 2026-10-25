@@ -1,0 +1,4 @@
+# Задача для Claude Code
+Создай проект Next.js (App Router, TypeScript) + Tailwind CSS + Framer Motion по документу `README.md`. Источник истины по поведению и тексту — `reference/Episodio.dc.html` и `reference/Login.dc.html` (читай шаблон и класс `Component`: `state`, `renderVals`, словарь `D`, данные `CAT`, `items`).
+Порядок: 1) токены и темы, шрифты Geist/Inter (next/font); 2) оболочка: нижний таб-бар, шапка, меню, палитра Ctrl+K, toast; 3) стор (Zustand) и модель Title; 4) экраны в порядке: Дашборд → Детали → Редактирование → Каталог → Статистика → AI-чат → Лента → Витрина → Настройки → Login; 5) i18n RU/EN; 6) PWA; 7) заглушки API (route handlers) и подготовка к Postgres/Auth.
+Требования: mobile-first, tap-цели ≥44px, контраст ≥4.5:1, без горизонтального скролла, анимации на Framer Motion (spring для «+», stagger для статистики).

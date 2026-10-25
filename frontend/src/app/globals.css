@@ -1,0 +1,150 @@
+@import "tailwindcss";
+
+/* Тема: Nordic Twilight (тёмная) по умолчанию, Nordic Frost — [data-theme=light] */
+:root {
+  --bg: #0f172a;
+  --card: #1e293b;
+  --glass: rgba(30, 41, 59, 0.7);
+  --glass2: rgba(30, 41, 59, 0.82);
+  --pop: rgba(30, 41, 59, 0.96);
+  --text: #e2e8f0;
+  --text2: #cbd5e1;
+  --muted: #94a3b8;
+  --faint: #64748b;
+  --acc: #2dd4bf;
+  --acc2: #38bdf8;
+  --onacc: #04201c;
+  --line: rgba(148, 163, 184, 0.14);
+  --shadow: none;
+  --err: #f87171;
+  --star: #fbbf24;
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --glass: #ffffff;
+  --glass2: rgba(255, 255, 255, 0.9);
+  --pop: #ffffff;
+  --text: #0f172a;
+  --text2: #334155;
+  --muted: #64748b;
+  --faint: #64748b;
+  /* README: белый на #0D9488 даёт ≈3.7:1, поэтому акцент светлой темы — #0F766E (≥4.5:1) */
+  --acc: #0f766e;
+  --acc2: #0369a1;
+  --onacc: #ffffff;
+  --line: #e2e8f0;
+  --shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.06);
+  --err: #dc2626;
+  --star: #f59e0b;
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-card: var(--card);
+  --color-glass: var(--glass);
+  --color-glass2: var(--glass2);
+  --color-pop: var(--pop);
+  --color-fg: var(--text);
+  --color-fg2: var(--text2);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-acc: var(--acc);
+  --color-acc2: var(--acc2);
+  --color-onacc: var(--onacc);
+  --color-line: var(--line);
+  --color-err: var(--err);
+  --color-star: var(--star);
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-display: var(--font-geist), system-ui, sans-serif;
+  --shadow-card: var(--shadow);
+  --animate-pop: pop 0.2s both;
+  --animate-rise: rise 0.4s both;
+  --animate-shake: shake 0.4s both;
+  --animate-sk: sk 1.4s ease-in-out infinite;
+  --animate-spin-fast: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes rise {
+  0% { transform: translateY(12px) scale(0.98); opacity: 0; }
+  100% { transform: none; opacity: 1; }
+}
+@keyframes shake {
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+@keyframes sk {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.7; }
+}
+@keyframes bl {
+  0%, 80%, 100% { opacity: 0.25; }
+  40% { opacity: 1; }
+}
+
+@layer base {
+  html, body { margin: 0; background: var(--bg); }
+  body {
+    color: var(--text);
+    font-family: var(--font-inter), system-ui, sans-serif;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
+  }
+  * { box-sizing: border-box; scrollbar-width: none; }
+  ::-webkit-scrollbar { width: 0; height: 0; }
+
+  a { color: var(--acc); }
+  a:hover { color: var(--acc2); }
+
+  button { cursor: pointer; font: inherit; color: inherit; }
+  button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible {
+    outline: 2px solid var(--acc);
+    outline-offset: 2px;
+  }
+  input, textarea { font: inherit; color: var(--text); }
+
+}
+
+@layer components {
+  /* Стеклянная подложка блоков */
+  .block {
+    border-radius: 24px;
+    padding: 22px;
+    background: var(--glass);
+    backdrop-filter: blur(14px);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+  }
+
+  /* Подпись раздела: kicker */
+  .kicker {
+    font: 600 12px var(--font-geist), sans-serif;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--acc);
+  }
+
+}
+
+/* Брендовые картинки под тему */
+.only-light { display: none; }
+[data-theme="light"] .only-dark { display: none; }
+[data-theme="light"] .only-light { display: block; }
+
+/* Горизонтальные ряды: скрытый скроллбар + snap */
+.snap-row { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x proximity; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

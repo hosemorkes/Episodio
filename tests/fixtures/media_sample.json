@@ -1,0 +1,93 @@
+[
+  {
+    "title_ru": "Блудливая Калифорния",
+    "title_original": "Californication",
+    "category": "tv_series",
+    "genres": ["драма", "комедия"],
+    "country": "США",
+    "release_year": 2007,
+    "season": 7,
+    "episode": 12,
+    "translation": null,
+    "comment": null,
+    "raw": "Californication  7 сезон 12 серия"
+  },
+  {
+    "title_ru": "БЛУДЛИВАЯ КАЛИФОРНИЯ",
+    "title_original": "CALIFORNICATION",
+    "category": "tv_series",
+    "season": 1,
+    "episode": 1,
+    "raw": "дубликат первой записи в другом регистре"
+  },
+  {
+    "title_ru": "Атака титанов",
+    "title_original": "Shingeki no Kyojin",
+    "category": "anime",
+    "genres": ["экшен", "фэнтези"],
+    "country": "Япония",
+    "release_year": 2013,
+    "season": 1,
+    "episode": 5,
+    "translation": "AniLibria",
+    "raw": "Атака титанов 1 сезон 5 серия AniLibria"
+  },
+  {
+    "title_ru": "Берсерк",
+    "title_original": "Berserk",
+    "category": "manga",
+    "genres": ["тёмное фэнтези"],
+    "author": "Кэнтаро Миура",
+    "country": "Япония",
+    "volume": 41,
+    "chapter": 364,
+    "raw": "Берсерк том 41 глава 364"
+  },
+  {
+    "title_ru": "Начало",
+    "title_original": "Inception",
+    "category": "movie",
+    "genres": ["фантастика", "триллер"],
+    "country": "США",
+    "release_year": 2010,
+    "raw": "Начало"
+  },
+  {
+    "title_ru": "Мастер и Маргарита",
+    "title_original": "",
+    "category": "book",
+    "genres": ["Драма", "драма", " комедия "],
+    "author": "Михаил Булгаков",
+    "raw": "Мастер и Маргарита"
+  },
+  {
+    "title_ru": "Сериал без категории",
+    "title_original": "Unknown",
+    "category": "serial",
+    "raw": "неизвестная категория serial"
+  },
+  {
+    "title_ru": "",
+    "title_original": "No title",
+    "category": "movie",
+    "raw": "пустое русское название"
+  },
+  {
+    "title_ru": "Ходячий замок",
+    "title_original": "Howl's Moving Castle",
+    "category": "cartoon",
+    "country": "Япония",
+    "release_year": 2004,
+    "unknown_field": "это поле должно игнорироваться",
+    "raw": "Ходячий замок"
+  },
+  {
+    "title_ru": "Во все тяжкие",
+    "title_original": "Breaking Bad",
+    "category": "tv_series",
+    "status": "completed",
+    "season": 5,
+    "episode": 16,
+    "raw": "Во все тяжкие 5 сезон 16 серия, просмотрено"
+  }
+]

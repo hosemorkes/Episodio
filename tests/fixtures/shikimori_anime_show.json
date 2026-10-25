@@ -1,0 +1,36 @@
+{
+  "id": 16498,
+  "name": "Shingeki no Kyojin",
+  "russian": "Атака титанов",
+  "image": {
+    "original": "/system/animes/original/16498.jpg?1711973439",
+    "preview": "/system/animes/preview/16498.jpg?1711973439",
+    "x96": "/system/animes/x96/16498.jpg?1711973439",
+    "x48": "/system/animes/x48/16498.jpg?1711973439"
+  },
+  "kind": "tv",
+  "aired_on": "2013-04-07",
+  "genres": [
+    {
+      "id": 27,
+      "name": "Shounen",
+      "russian": "Сёнен",
+      "kind": "genre",
+      "entry_type": "Anime"
+    },
+    {
+      "id": 1,
+      "name": "Action",
+      "russian": "Экшен",
+      "kind": "genre",
+      "entry_type": "Anime"
+    },
+    {
+      "id": 8,
+      "name": "Drama",
+      "russian": "Драма",
+      "kind": "genre",
+      "entry_type": "Anime"
+    }
+  ]
+}

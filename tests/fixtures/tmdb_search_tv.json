@@ -1,0 +1,39 @@
+{
+  "page": 1,
+  "results": [
+    {
+      "adult": false,
+      "backdrop_path": "/backdrop.jpg",
+      "genre_ids": [18, 35],
+      "id": 1215,
+      "origin_country": ["US"],
+      "original_language": "en",
+      "original_name": "Californication",
+      "overview": "Хэнк Муди — писатель, потерявший вдохновение.",
+      "popularity": 45.1,
+      "poster_path": "/californication.jpg",
+      "first_air_date": "2007-08-13",
+      "name": "Блудливая Калифорния",
+      "vote_average": 8.0,
+      "vote_count": 2100
+    },
+    {
+      "adult": false,
+      "backdrop_path": null,
+      "genre_ids": [99],
+      "id": 99999,
+      "origin_country": ["GB"],
+      "original_language": "en",
+      "original_name": "Californication Documentary",
+      "overview": "",
+      "popularity": 1.2,
+      "poster_path": null,
+      "first_air_date": "",
+      "name": "Калифорникация: документальный",
+      "vote_average": 0.0,
+      "vote_count": 0
+    }
+  ],
+  "total_pages": 1,
+  "total_results": 2
+}

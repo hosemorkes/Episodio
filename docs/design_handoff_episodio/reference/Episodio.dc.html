@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0F172A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Episodio">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script>if("serviceWorker"in navigator&&location.protocol.startsWith("http"))addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})});</script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0F172A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Episodio">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script>if("serviceWorker"in navigator&&location.protocol.startsWith("http"))addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})});</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>:root{--bg:#0F172A;--card:#1E293B;--glass:rgba(30,41,59,.7);--glass2:rgba(30,41,59,.82);--pop:rgba(30,41,59,.96);--text:#E2E8F0;--text2:#CBD5E1;--muted:#94A3B8;--faint:#64748B;--acc:#2DD4BF;--acc2:#38BDF8;--onacc:#04201C;--line:rgba(148,163,184,.14);--shadow:none}html[data-theme=light]{--bg:#F8FAFC;--card:#FFFFFF;--glass:#FFFFFF;--glass2:rgba(255,255,255,.9);--pop:#FFFFFF;--text:#0F172A;--text2:#334155;--muted:#64748B;--faint:#64748B;--acc:#0D9488;--acc2:#0284C7;--onacc:#FFFFFF;--line:#E2E8F0;--shadow:0 1px 2px rgba(15,23,42,.06),0 8px 24px rgba(15,23,42,.06)}body{margin:0;background:var(--bg);overscroll-behavior:none;-webkit-tap-highlight-color:transparent}*{box-sizing:border-box}a{color:var(--acc)}a:hover{color:var(--acc2)}::-webkit-scrollbar{width:0;height:0}*{scrollbar-width:none}@keyframes pop{0%{transform:scale(.6);opacity:0}100%{transform:scale(1);opacity:1}}@keyframes bl{0%,80%,100%{opacity:.25}40%{opacity:1}}@keyframes spin{to{transform:rotate(360deg)}}@keyframes sk{0%,100%{opacity:.35}50%{opacity:.7}}</style>
+</helmet>
+<div style="min-height:100vh;background:radial-gradient(900px 500px at 80% -10%,color-mix(in srgb,var(--acc) 12%,transparent),transparent),var(--bg);color:var(--text);font-family:Inter,sans-serif;display:flex;flex-direction:{{ shellDir }}">
+  <main style="flex:1;min-width:0;padding:{{ pad }};padding-bottom:{{ padBottom }}">
+    <div style="max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:20px">
+      <header style="display:flex;flex-direction:column;gap:18px">
+        <div style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <div style="font:700 24px Geist,sans-serif;letter-spacing:-.03em;display:flex;align-items:center;gap:10px"><span style="width:10px;height:10px;border-radius:50%;background:var(--acc);box-shadow:0 0 14px var(--acc)"></span>Episodio</div>
+          <div style="display:flex;gap:10px">
+            <button onClick="{{ openPal }}" aria-label="{{ i.k33 }}" style="all:unset;cursor:pointer;width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:14px;background:var(--glass);border:1px solid rgba(148,163,184,.18);color:var(--text)" style-hover="border-color:var(--acc)"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14z M20 20l-4-4"/></svg></button>
+            <button onClick="{{ toggleMenu }}" aria-label="{{ i.k34 }}" style="all:unset;cursor:pointer;width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:14px;background:var(--glass);border:1px solid rgba(148,163,184,.18);color:var(--text);border-color:{{ menuBd }}" style-hover="border-color:var(--acc)"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16 M4 12h16 M4 17h16"/></svg></button>
+          </div>
+          <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+            <div onClick="{{ closeMenu }}" style="position:fixed;inset:0;z-index:30"></div>
+            <div style="position:absolute;top:54px;right:0;z-index:31;min-width:200px;padding:6px;border-radius:18px;background:var(--pop);backdrop-filter:blur(16px);border:1px solid color-mix(in srgb,var(--acc) 30%,transparent);box-shadow:0 20px 50px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:2px;animation:pop .18s both">
+              <sc-for list="{{ menuItems }}" as="m" hint-placeholder-count="2"><button onClick="{{ m.go }}" style="all:unset;cursor:pointer;height:44px;padding:0 14px;display:flex;align-items:center;border-radius:12px;font:500 15px Inter,sans-serif;color:{{ m.color }};background:{{ m.bg }}" style-hover="background:rgba(148,163,184,.12)">{{ m.label }}</button></sc-for>
+            </div>
+          </sc-if>
+        </div>
+        <div>
+          <div style="font:600 12px Geist,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--acc)">{{ kicker }}</div>
+          <h1 style="margin:4px 0 0;font:700 {{ h1Size }} Geist,sans-serif;letter-spacing:-.03em">{{ title }}</h1>
+        </div>
+      </header>
+
+      <sc-if value="{{ v.home }}" hint-placeholder-val="{{ true }}">
+        <div style="display:grid;grid-template-columns:{{ bentoCols }};gap:16px">
+          <div style="grid-column:{{ heroSpan }};border-radius:24px;padding:22px;background:linear-gradient(135deg,color-mix(in srgb,var(--acc) 18%,transparent),color-mix(in srgb,var(--acc2) 6%,transparent) 60%),var(--card);border:1px solid color-mix(in srgb,var(--acc) 28%,transparent);display:flex;gap:18px;align-items:center;min-height:200px">
+            <div style="width:110px;height:156px;flex:none;border-radius:14px;background:{{ hero.bg }};box-shadow:0 12px 30px rgba(0,0,0,.4);display:flex;align-items:flex-end;padding:10px;font:700 26px Geist,sans-serif;color:rgba(255,255,255,.9)">{{ hero.ini }}</div>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px">
+              <div style="font:600 12px Geist,sans-serif;letter-spacing:.1em;color:var(--acc)">{{ i.k0 }}</div>
+              <div style="font:700 24px Geist,sans-serif;letter-spacing:-.02em">{{ hero.title }}</div><div style="font-size:14px;color:var(--text2)">{{ hero.en }}</div>
+              <div style="color:var(--muted);font-size:14px">{{ hero.line }}</div>
+              <div style="height:6px;border-radius:3px;background:rgba(148,163,184,.18);overflow:hidden"><div style="height:100%;width:{{ hero.pct }};background:var(--acc);box-shadow:0 0 12px var(--acc);transition:width .4s"></div></div>
+              <button onClick="{{ hero.mark }}" style="all:unset;cursor:pointer;align-self:flex-start;height:44px;padding:0 20px;display:flex;align-items:center;border-radius:14px;background:var(--acc);color:var(--onacc);font:600 15px Geist,sans-serif;transition:.2s" style-hover="box-shadow:0 0 24px color-mix(in srgb,var(--acc) 60%,transparent);transform:translateY(-1px)">{{ hero.btn }}</button>
+            </div>
+          </div>
+                    <div style="border-radius:24px;padding:22px;background:var(--glass);backdrop-filter:blur(14px);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;justify-content:space-between;gap:12px">
+            <div style="color:var(--muted);font-size:13px">{{ i.k1 }}</div>
+            <div style="font:700 56px Geist,sans-serif;letter-spacing:-.04em;line-height:1">{{ totalEps }}</div>
+            <div style="color:var(--acc);font-size:13px">{{ hoursLine }}</div>
+          </div>
+          <div style="border-radius:24px;padding:22px;background:var(--glass);backdrop-filter:blur(14px);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px">
+            <div style="color:var(--muted);font-size:13px">{{ i.k2 }}</div>
+            <div style="display:flex;align-items:flex-end;gap:6px;height:72px">
+              <sc-for list="{{ week }}" as="d" hint-placeholder-count="7"><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;justify-content:flex-end;height:100%"><div style="width:100%;height:{{ d.h }};border-radius:6px;background:{{ d.c }};transition:height .4s"></div><span style="font-size:10px;color:var(--faint)">{{ d.l }}</span></div></sc-for>
+            </div>
+          </div>
+        </div>
+        </sc-if>
+<sc-if value="{{ v.catTabs }}" hint-placeholder-val="{{ false }}"><div style="display:flex;gap:8px"><sc-for list="{{ cat.views }}" as="p" hint-placeholder-count="2"><button onClick="{{ p.go }}" style="all:unset;cursor:pointer;flex:none;display:flex;align-items:center;border-radius:99px;font:500 14px Inter,sans-serif;background:{{ p.bg }};border:1px solid {{ p.bd }};color:{{ p.fg }};height:40px;padding:0 16px" style-hover="border-color:var(--acc)">{{ p.n }}</button></sc-for></div></sc-if>
+      <sc-if value="{{ v.discover }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div style="display:flex;gap:10px;width:100%;max-width:760px;margin:0 auto">
+            <div style="position:relative;flex:1;min-width:0">
+              <input value="{{ cat.q }}" onInput="{{ cat.setQ }}" placeholder="{{ cat.ph }}" style="all:unset;box-sizing:border-box;width:100%;height:56px;padding:0 20px;border-radius:18px;background:var(--glass);border:1px solid var(--line);box-shadow:var(--shadow);font:500 17px Geist,sans-serif;color:var(--text)" style-focus="border-color:var(--acc)">
+              <sc-if value="{{ cat.sugOpen }}" hint-placeholder-val="{{ false }}">
+                <div onClick="{{ cat.closeSug }}" style="position:fixed;inset:0;z-index:7"></div>
+                <div style="position:absolute;top:62px;left:0;right:0;z-index:8;padding:6px;border-radius:18px;background:var(--pop);border:1px solid color-mix(in srgb,var(--acc) 35%,transparent);box-shadow:0 20px 50px rgba(0,0,0,.35);display:flex;flex-direction:column;gap:2px">
+                  <sc-for list="{{ cat.sug }}" as="g" hint-placeholder-count="4"><button onClick="{{ g.go }}" style="all:unset;cursor:pointer;min-height:48px;padding:0 14px;display:flex;justify-content:space-between;align-items:center;gap:12px;border-radius:12px;font:500 15px Inter,sans-serif;color:var(--text)" style-hover="background:rgba(148,163,184,.14)"><span>{{ g.label }}</span><span style="font-size:12px;color:var(--muted)">{{ g.sub }}</span></button></sc-for>
+                </div>
+              </sc-if>
+            </div>
+            <button onClick="{{ cat.toggleF }}" style="all:unset;cursor:pointer;height:56px;padding:0 20px;display:flex;align-items:center;gap:8px;border-radius:18px;background:var(--glass);border:1px solid {{ cat.fBd }};box-shadow:var(--shadow);font:600 15px Geist,sans-serif" style-hover="border-color:var(--acc)">{{ cat.fLabel }}</button>
+          </div>
+          <sc-if value="{{ cat.fOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="border-radius:22px;padding:20px;background:var(--glass);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:16px;animation:pop .15s both">
+              <sc-for list="{{ cat.groups }}" as="gr" hint-placeholder-count="4"><div style="display:flex;flex-direction:column;gap:8px"><span style="font-size:12px;color:var(--muted)">{{ gr.label }}</span><div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{ gr.pills }}" as="p" hint-placeholder-count="5"><button onClick="{{ p.go }}" style="all:unset;cursor:pointer;flex:none;display:flex;align-items:center;border-radius:99px;font:500 14px Inter,sans-serif;background:{{ p.bg }};border:1px solid {{ p.bd }};color:{{ p.fg }};height:40px;padding:0 14px" style-hover="border-color:var(--acc)">{{ p.n }}</button></sc-for></div></div></sc-for>
+              <button onClick="{{ cat.reset }}" style="all:unset;cursor:pointer;align-self:flex-start;height:44px;padding:0 16px;display:flex;align-items:center;border-radius:12px;color:var(--muted);font:600 14px Geist,sans-serif" style-hover="background:rgba(148,163,184,.12)">{{ cat.resetLabel }}</button>
+            </div>
+          </sc-if>
+          <div style="display:flex;gap:8px;overflow:auto"><sc-for list="{{ cat.tabs }}" as="p" hint-placeholder-count="6"><button onClick="{{ p.go }}" style="all:unset;cursor:pointer;flex:none;display:flex;align-items:center;border-radius:99px;font:500 14px Inter,sans-serif;background:{{ p.bg }};border:1px solid {{ p.bd }};color:{{ p.fg }};height:44px;padding:0 20px;font-weight:600" style-hover="border-color:var(--acc)">{{ p.n }}</button></sc-for></div>
+          <sc-if value="{{ cat.menuBackdrop }}" hint-placeholder-val="{{ false }}"><div onClick="{{ cat.closeMenu }}" style="position:fixed;inset:0;z-index:4"></div></sc-if>
+          <div style="display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:4px">
+            <sc-for list="{{ cat.heroes }}" as="b" hint-placeholder-count="3">
+              <div onClick="{{ b.open }}" style="flex:none;width:min(580px,88%);height:240px;scroll-snap-align:start;position:relative;overflow:hidden;border-radius:26px;background:{{ b.bg }};padding:22px;color:#F1F5F9;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;cursor:pointer;box-shadow:var(--shadow)">
+                <span style="align-self:flex-start;padding:4px 12px;border-radius:99px;background:rgba(2,6,23,.55);backdrop-filter:blur(8px);font:600 12px Geist,sans-serif;letter-spacing:.06em;color:#2DD4BF">{{ b.badge }}</span>
+                <div style="font:700 28px Geist,sans-serif;letter-spacing:-.03em">{{ b.title }}</div>
+                <div style="font-size:14px;color:#CBD5E1">{{ b.line }}</div>
+                <div style="display:flex;align-items:center;gap:14px"><span style="font:600 16px Geist,sans-serif;color:#FBBF24">★ {{ b.rating }}</span><button onClick="{{ b.toggle }}" style="all:unset;cursor:pointer;height:44px;padding:0 20px;display:flex;align-items:center;border-radius:14px;background:{{ b.btnBg }};color:{{ b.btnFg }};font:600 14px Geist,sans-serif" style-hover="box-shadow:0 0 22px rgba(45,212,191,.5)">{{ b.btn }}</button></div>
+                <sc-if value="{{ b.menuOpen }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:22px;bottom:84px;z-index:6;min-width:200px;padding:6px;border-radius:16px;background:var(--pop);border:1px solid color-mix(in srgb,var(--acc) 40%,transparent);box-shadow:0 14px 30px rgba(0,0,0,.4);display:flex;flex-direction:column;gap:2px;animation:pop .15s both"><sc-for list="{{ b.menu }}" as="m" hint-placeholder-count="2"><button onClick="{{ m.go }}" style="all:unset;cursor:pointer;min-height:44px;padding:0 12px;display:flex;align-items:center;border-radius:10px;font:500 14px Inter,sans-serif;color:var(--text)" style-hover="background:rgba(148,163,184,.14)">{{ m.label }}</button></sc-for></div></sc-if>
+              </div>
+            </sc-for>
+          </div>
+          <sc-for list="{{ cat.shelves }}" as="sh" hint-placeholder-count="3">
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <div><h2 style="margin:0;font:600 20px Geist,sans-serif;letter-spacing:-.02em">{{ sh.title }}</h2><div style="font-size:13px;color:var(--muted);margin-top:2px">{{ sh.sub }}</div></div>
+              <div style="{{ sh.wrap }}">
+                <sc-for list="{{ sh.cards }}" as="c" hint-placeholder-count="6">
+                  <div style="flex:none;width:{{ sh.cw }};display:flex;flex-direction:column;gap:8px">
+                    <div onClick="{{ c.open }}" style="position:relative;aspect-ratio:2/3;border-radius:18px;overflow:hidden;background:{{ c.bg }};box-shadow:var(--shadow);cursor:pointer;transition:transform .25s,box-shadow .25s" style-hover="transform:translateY(-4px);box-shadow:0 18px 40px rgba(0,0,0,.4),0 0 0 1px color-mix(in srgb,var(--acc) 50%,transparent)">
+                      <div style="position:absolute;top:10px;left:12px;font:700 34px Geist,sans-serif;color:rgba(255,255,255,.35)">{{ c.ini }}</div>
+                      <span style="position:absolute;top:10px;right:10px;padding:3px 9px;border-radius:99px;background:rgba(2,6,23,.55);backdrop-filter:blur(8px);font:600 11px Geist,sans-serif;color:#F1F5F9">{{ c.status }}</span>
+                      <sc-if value="{{ c.menuOpen }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:8px;right:8px;bottom:56px;z-index:6;padding:6px;border-radius:16px;background:var(--pop);border:1px solid color-mix(in srgb,var(--acc) 40%,transparent);box-shadow:0 14px 30px rgba(0,0,0,.4);display:flex;flex-direction:column;gap:2px;animation:pop .15s both"><sc-for list="{{ c.menu }}" as="m" hint-placeholder-count="2"><button onClick="{{ m.go }}" style="all:unset;cursor:pointer;min-height:44px;padding:0 12px;display:flex;align-items:center;border-radius:10px;font:500 14px Inter,sans-serif;color:var(--text)" style-hover="background:rgba(148,163,184,.14)">{{ m.label }}</button></sc-for></div></sc-if>
+                      <button onClick="{{ c.toggle }}" style="all:unset;cursor:pointer;position:absolute;left:8px;right:8px;bottom:8px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:14px;background:{{ c.btnBg }};color:{{ c.btnFg }};font:600 14px Geist,sans-serif;backdrop-filter:blur(8px)" style-hover="box-shadow:0 0 22px rgba(45,212,191,.5)">{{ c.btn }}</button>
+                    </div>
+                    <div style="font:600 15px Geist,sans-serif;line-height:1.25;color:var(--text)">{{ c.title }}</div>
+                    <div style="font-size:12px;color:var(--muted)">{{ c.sub }}</div>
+                    <div style="font:600 13px Geist,sans-serif;color:var(--text)"><span style="color:#F59E0B">★</span> {{ c.rating }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+          <sc-if value="{{ cat.empty }}" hint-placeholder-val="{{ false }}"><div style="padding:40px 0;text-align:center;color:var(--muted);font-size:15px">{{ cat.emptyLabel }}</div></sc-if>
+        </div>
+      </sc-if>
+      <sc-if value="{{ v.titles }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;align-items:baseline;justify-content:space-between"><h2 style="margin:8px 0 0;font:600 18px Geist,sans-serif">{{ i.k3 }}</h2><div style="display:flex;align-items:center;gap:12px"><span style="font-size:12px;color:var(--faint)">{{ hint }}</span><button onClick="{{ addNew }}" style="all:unset;cursor:pointer;height:44px;padding:0 16px;display:flex;align-items:center;border-radius:14px;background:color-mix(in srgb,var(--acc) 14%,transparent);border:1px solid color-mix(in srgb,var(--acc) 40%,transparent);color:var(--acc);font:600 14px Geist,sans-serif" style-hover="background:color-mix(in srgb,var(--acc) 26%,transparent)">{{ i.k4 }}</button></div></div>
+        <sc-if value="{{ v.catalog }}" hint-placeholder-val="{{ false }}"><div style="display:flex;gap:8px;overflow:auto"><sc-for list="{{ statusPills }}" as="p" hint-placeholder-count="5"><button onClick="{{ p.go }}" style="all:unset;cursor:pointer;height:40px;padding:0 14px;display:flex;align-items:center;flex:none;border-radius:99px;font:500 13px Inter,sans-serif;background:{{ p.bg }};border:1px solid {{ p.bd }};color:{{ p.fg }}" style-hover="border-color:var(--acc)">{{ p.n }}</button></sc-for></div><div style="display:flex;gap:8px;overflow:auto"><sc-for list="{{ typePills }}" as="p" hint-placeholder-count="6"><button onClick="{{ p.go }}" style="all:unset;cursor:pointer;height:40px;padding:0 14px;display:flex;align-items:center;flex:none;border-radius:99px;font:500 13px Inter,sans-serif;background:{{ p.bg }};border:1px solid {{ p.bd }};color:{{ p.fg }}" style-hover="border-color:var(--acc)">{{ p.n }}</button></sc-for></div></sc-if>
+        <div style="{{ cardWrap }}">
+          <sc-for list="{{ cards }}" as="it" hint-placeholder-count="6">
+            <div onClick="{{ it.open }}" onTouchStart="{{ it.ts }}" onTouchEnd="{{ it.te }}" style="cursor:pointer;position:relative;flex:none;width:{{ cardW }};border-radius:20px;overflow:hidden;aspect-ratio:3/4;background:{{ it.bg }};border:1px solid rgba(148,163,184,.14);transition:transform .25s,box-shadow .25s;touch-action:pan-y" style-hover="transform:scale(1.03);box-shadow:0 18px 40px rgba(0,0,0,.5),0 0 0 1px rgba(45,212,191,.4)">
+              <div style="position:absolute;top:10px;left:10px;height:28px;padding:0 10px;display:flex;align-items:center;border-radius:99px;background:rgba(15,23,42,.55);backdrop-filter:blur(8px);font:600 13px Geist,sans-serif;color:#2DD4BF">{{ it.rate }}</div><div style="position:absolute;top:48px;left:14px;font:700 32px Geist,sans-serif;color:rgba(255,255,255,.35)">{{ it.ini }}</div>
+              <button onClick="{{ it.edit }}" aria-label="{{ i.k35 }}" style="all:unset;cursor:pointer;position:absolute;top:6px;right:6px;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:600 18px Geist,sans-serif;color:#E2E8F0;background:rgba(15,23,42,.45);backdrop-filter:blur(8px)" style-hover="background:rgba(45,212,191,.35)">✎</button>
+              <div style="position:absolute;inset:auto 0 0 0;padding:14px;background:linear-gradient(transparent,rgba(15,23,42,.92) 40%);display:flex;align-items:flex-end;gap:10px">
+                <div style="flex:1;min-width:0">
+                  <div style="font:600 15px Geist,sans-serif;color:#F1F5F9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ it.title }}</div><div style="font-size:12px;color:#CBD5E1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ it.en }}</div>
+                  <div style="font-size:12px;color:#94A3B8;margin:2px 0 8px">{{ it.meta }}</div>
+                  <div style="height:4px;border-radius:2px;background:rgba(148,163,184,.25)"><div style="height:100%;width:{{ it.pct }};background:#2DD4BF;border-radius:2px;transition:width .4s"></div></div>
+                </div>
+                <button onClick="{{ it.mark }}" aria-label="{{ i.k36 }}" style="all:unset;cursor:pointer;width:44px;height:44px;flex:none;border-radius:50%;background:#2DD4BF;color:#04201C;font:600 24px Geist,sans-serif;display:flex;align-items:center;justify-content:center;transform:{{ it.scale }};box-shadow:{{ it.glow }};transition:transform .18s cubic-bezier(.3,1.6,.5,1),box-shadow .3s">+</button>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        </sc-if>
+      <sc-if value="{{ v.home }}" hint-placeholder-val="{{ true }}">
+        <div style="border-radius:24px;padding:22px;background:var(--glass);border:1px solid var(--line);box-shadow:var(--shadow)">
+          <div style="color:var(--muted);font-size:13px;margin-bottom:8px">{{ i.k5 }}</div>
+          <div style="font:500 18px Geist,sans-serif;line-height:1.4;text-wrap:pretty">{{ i.k6 }}</div>
+          <div style="display:flex;gap:8px;margin-top:12px"><span style="padding:4px 10px;border-radius:99px;background:color-mix(in srgb,var(--acc) 12%,transparent);color:var(--acc);font-size:12px">9 / 10</span><span style="padding:4px 10px;border-radius:99px;background:rgba(148,163,184,.12);font-size:12px">{{ i.k7 }}</span><span style="padding:4px 10px;border-radius:99px;background:rgba(148,163,184,.12);font-size:12px">{{ i.k8 }}</span></div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ v.settings }}" hint-placeholder-val="{{ false }}">
+        <div style="border-radius:24px;padding:22px;background:var(--glass);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:16px">
+          <div style="font:600 12px Geist,sans-serif;letter-spacing:.1em;color:var(--acc)">{{ i.k9 }}</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">
+            <sc-for list="{{ themes }}" as="th" hint-placeholder-count="2">
+              <button onClick="{{ th.go }}" style="all:unset;cursor:pointer;box-sizing:border-box;padding:14px;border-radius:18px;border:2px solid {{ th.bd }};display:flex;flex-direction:column;gap:12px;transition:.2s" style-hover="border-color:var(--acc)">
+                <div style="height:72px;border-radius:12px;background:{{ th.bg }};padding:10px;display:flex;flex-direction:column;gap:6px;border:1px solid rgba(148,163,184,.3)"><div style="height:10px;width:50%;border-radius:5px;background:{{ th.acc }}"></div><div style="flex:1;border-radius:8px;background:{{ th.card }}"></div></div>
+                <div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font:600 16px Geist,sans-serif">{{ th.name }}</div><div style="font-size:13px;color:var(--muted)">{{ th.sub }}</div></div><span style="font:600 13px Geist,sans-serif;color:var(--acc)">{{ th.on }}</span></div>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ v.settings }}" hint-placeholder-val="{{ false }}">
+        <div style="border-radius:24px;padding:22px;background:var(--glass);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:16px">
+          <div style="font:600 12px Geist,sans-serif;letter-spacing:.1em;color:var(--acc)">{{ i.k10 }}</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap"><sc-for list="{{ langs }}" as="lg" hint-placeholder-count="2"><button onClick="{{ lg.go }}" style="all:unset;cursor:pointer;box-sizing:border-box;min-width:160px;height:52px;padding:0 20px;display:flex;align-items:center;justify-content:space-between;gap:14px;border-radius:16px;border:2px solid {{ lg.bd }};font:600 16px Geist,sans-serif" style-hover="border-color:var(--acc)">{{ lg.name }}<span style="font-size:13px;color:var(--acc)">{{ lg.on }}</span></button></sc-for></div>
+        </div>
+        <div style="border-radius:24px;padding:22px;background:var(--glass);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:16px">
+          <div style="font:600 12px Geist,sans-serif;letter-spacing:.1em;color:var(--acc)">{{ db.title }}</div>
+          <div style="font-size:13px;color:var(--muted)">{{ db.info }}</div>
+          <div style="font-size:13px;font-weight:600">{{ db.backupTitle }}</div>
+          <input id="db-file" type="file" accept=".json,application/json" onChange="{{ db.pick }}" style="display:none">
+          <div style="display:flex;gap:10px;flex-wrap:wrap"><sc-for list="{{ db.backup }}" as="b" hint-placeholder-count="3"><button onClick="{{ b.go }}" style="all:unset;cursor:pointer;box-sizing:border-box;height:48px;padding:0 18px;display:flex;align-items:center;border-radius:14px;font:600 14px Geist,sans-serif;background:{{ b.bg }};color:{{ b.fg }};border:1px solid {{ b.bd }}" style-hover="border-color:var(--acc)">{{ b.label }}</button></sc-for></div>
+          <div style="font-size:13px;font-weight:600">{{ db.exportTitle }}</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap"><sc-for list="{{ db.exports }}" as="b" hint-placeholder-count="3"><button onClick="{{ b.go }}" style="all:unset;cursor:pointer;box-sizing:border-box;height:48px;padding:0 18px;display:flex;align-items:center;border-radius:14px;font:600 14px Geist,sans-serif;border:1px solid rgba(148,163,184,.3)" style-hover="border-color:var(--acc)">{{ b.label }}</button></sc-for></div>
+        </div>
+        <div style="border-radius:24px;padding:22px;background:var(--glass);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:14px">
+          <div style="font:600 12px Geist,sans-serif;letter-spacing:.1em;color:var(--acc)">{{ acc.title }}</div>
+          <div style="font-size:15px">{{ acc.user }}</div>
+          <button onClick="{{ acc.out }}" style="all:unset;cursor:pointer;box-sizing:border-box;align-self:flex-start;height:48px;padding:0 20px;display:flex;align-items:center;border-radius:14px;border:1px solid rgba(248,113,113,.5);color:#F87171;font:600 14px Geist,sans-serif" style-hover="background:rgba(248,113,113,.12)">{{ acc.label }}</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ v.feed }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:0;padding-left:8px">
+          <sc-for list="{{ feed }}" as="f" hint-placeholder-count="5">
+            <div style="display:flex;gap:16px;animation:pop .3s both">
+              <div style="display:flex;flex-direction:column;align-items:center"><span style="width:12px;height:12px;border-radius:50%;background:var(--acc);box-shadow:0 0 12px var(--acc);margin-top:20px"></span><span style="flex:1;width:2px;background:rgba(148,163,184,.18)"></span></div>
+              <div style="flex:1;margin:6px 0;padding:14px 18px;border-radius:18px;background:var(--glass);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;justify-content:space-between;gap:12px;align-items:center">
+                <div><div style="font:600 12px Geist,sans-serif;color:var(--acc);letter-spacing:.08em">{{ f.day }}</div><div style="font:600 16px Geist,sans-serif;margin-top:2px">{{ f.title }}</div><div style="font-size:13px;color:var(--muted)">{{ f.epl }}</div></div>
+                <div style="font:600 14px Geist,sans-serif;color:var(--faint)">{{ f.time }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ v.stats }}" hint-placeholder-val="{{ false }}">
+        <div style="display:grid;grid-template-columns:{{ statCols }};gap:16px">
+          <div style="border-radius:24px;padding:22px;background:var(--glass);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:14px">
+            <div style="font:600 16px Geist,sans-serif">{{ i.k11 }}</div>
+            <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+              <div style="width:130px;height:130px;border-radius:50%;background:{{ donut }};display:flex;align-items:center;justify-content:center"><div style="width:84px;height:84px;border-radius:50%;background:var(--card)"></div></div>
+              <div style="display:flex;flex-direction:column;gap:6px;font-size:13px"><sc-for list="{{ genreRows }}" as="g" hint-placeholder-count="4"><div style="display:flex;gap:8px;align-items:center;opacity:{{ g.o }};transform:translateX({{ g.x }})"><span style="width:10px;height:10px;border-radius:3px;background:{{ g.c }}"></span>{{ g.n }} <span style="color:var(--faint)">{{ g.p }}</span></div></sc-for></div>
+            </div>
+          </div>
+          <div style="border-radius:24px;padding:22px;background:var(--glass);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px">
+            <div style="font:600 16px Geist,sans-serif">{{ i.k12 }}</div>
+            <sc-for list="{{ countryRows }}" as="c" hint-placeholder-count="3"><div style="opacity:{{ c.o }}"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span>{{ c.n }}</span><span style="color:var(--faint)">{{ c.p }}</span></div><div style="height:8px;border-radius:4px;background:rgba(148,163,184,.15)"><div style="height:100%;width:{{ c.w }};border-radius:4px;background:linear-gradient(90deg,var(--acc),var(--acc2))"></div></div></div></sc-for>
+          </div>
+          <div style="border-radius:24px;padding:22px;background:var(--glass);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px">
+            <div style="font:600 16px Geist,sans-serif">{{ i.k13 }}</div>
+            <div style="display:flex;align-items:flex-end;gap:10px;height:130px"><sc-for list="{{ yearRows }}" as="y" hint-placeholder-count="5"><div style="flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px"><div style="width:100%;height:{{ y.h }};border-radius:8px;background:var(--acc2);opacity:.85"></div><span style="font-size:11px;color:var(--muted)">{{ y.l }}</span></div></sc-for></div>
+          </div>
+          <div style="border-radius:24px;padding:22px;background:var(--glass);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:10px">
+            <div style="font:600 16px Geist,sans-serif">{{ i.k14 }}</div>
+            <sc-for list="{{ topRows }}" as="t" hint-placeholder-count="5"><div style="display:flex;align-items:center;gap:12px;opacity:{{ t.o }};transform:translateX({{ t.x }})"><span style="font:700 18px Geist,sans-serif;color:var(--acc);width:22px">{{ t.i }}</span><span style="flex:1;font-size:14px">{{ t.n }}</span><span style="font:600 14px Geist,sans-serif;color:var(--muted)">{{ t.e }}</span></div></sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ v.ai }}" hint-placeholder-val="{{ false }}">
+        <div style="width:100%;max-width:820px;margin:0 auto;height:calc(100vh - 300px);min-height:460px;display:flex;flex-direction:column;border-radius:26px;background:var(--glass);border:1px solid var(--line);box-shadow:var(--shadow);overflow:hidden">
+          <div style="display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line)"><div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--acc),var(--acc2));display:flex;align-items:center;justify-content:center;font:700 20px Geist,sans-serif;color:var(--onacc);box-shadow:0 0 18px color-mix(in srgb,var(--acc) 50%,transparent)">{{ chat.initial }}</div><div><div style="font:600 17px Geist,sans-serif">{{ chat.name }}</div><div style="font-size:12px;color:var(--muted)">{{ chat.sub }}</div></div></div>
+          <div id="chat-box" style="flex:1;min-height:0;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px">
+            <sc-for list="{{ chat.msgs }}" as="m" hint-placeholder-count="1">
+              <div style="display:flex;flex-direction:column;align-items:{{ m.al }};gap:8px;animation:pop .2s both">
+                <div style="max-width:min(580px,88%);padding:12px 16px;border-radius:{{ m.rad }};background:{{ m.bg }};color:{{ m.fg }};border:1px solid {{ m.bd }};font-size:15px;line-height:1.55;white-space:pre-wrap;text-wrap:pretty">{{ m.t }}</div>
+                <sc-if value="{{ m.hasActs }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-wrap:wrap;gap:8px;max-width:min(580px,94%)"><sc-for list="{{ m.acts }}" as="a" hint-placeholder-count="2"><button onClick="{{ a.go }}" style="all:unset;cursor:pointer;min-height:40px;padding:0 14px;display:flex;align-items:center;border-radius:99px;border:1px solid var(--acc);color:var(--acc);font:600 13px Geist,sans-serif" style-hover="background:color-mix(in srgb,var(--acc) 14%,transparent)">{{ a.label }}</button></sc-for></div></sc-if>
+              </div>
+            </sc-for>
+            <sc-if value="{{ chat.typing }}" hint-placeholder-val="{{ false }}"><div style="align-self:flex-start;display:flex;gap:5px;padding:14px 16px;border-radius:18px 18px 18px 6px;background:var(--card);border:1px solid var(--line)"><span style="width:7px;height:7px;border-radius:50%;background:var(--acc);animation:bl 1.1s infinite"></span><span style="width:7px;height:7px;border-radius:50%;background:var(--acc);animation:bl 1.1s .18s infinite"></span><span style="width:7px;height:7px;border-radius:50%;background:var(--acc);animation:bl 1.1s .36s infinite"></span></div></sc-if>
+          </div>
+          <div style="padding:12px 14px 14px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;gap:8px;overflow-x:auto"><sc-for list="{{ chat.chips }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.go }}" style="all:unset;cursor:pointer;flex:none;height:40px;padding:0 14px;display:flex;align-items:center;border-radius:99px;border:1px solid rgba(148,163,184,.28);font:500 13px Inter,sans-serif;color:var(--text2)" style-hover="border-color:var(--acc);color:var(--acc)">{{ c.label }}</button></sc-for></div>
+            <div style="display:flex;gap:10px">
+              <input value="{{ chat.input }}" onInput="{{ chat.setInput }}" onKeyDown="{{ chat.key }}" placeholder="{{ chat.ph }}" style="all:unset;box-sizing:border-box;flex:1;min-width:0;height:48px;padding:0 16px;border-radius:14px;background:var(--bg);border:1px solid rgba(148,163,184,.25);font:400 16px Inter,sans-serif;color:var(--text)" style-focus="border-color:var(--acc)">
+              <button onClick="{{ chat.send }}" style="all:unset;cursor:pointer;height:48px;padding:0 22px;display:flex;align-items:center;border-radius:14px;background:var(--acc);color:var(--onacc);font:600 15px Geist,sans-serif" style-hover="box-shadow:0 0 22px color-mix(in srgb,var(--acc) 55%,transparent)">{{ chat.sendLabel }}</button>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ v.share }}" hint-placeholder-val="{{ false }}">
+        <div style="border-radius:28px;padding:{{ sharePad }};background:radial-gradient(600px 300px at 20% 0%,color-mix(in srgb,var(--acc) 22%,transparent),transparent),var(--card);border:1px solid color-mix(in srgb,var(--acc) 30%,transparent);display:flex;flex-direction:column;gap:18px">
+          <div style="font:600 12px Geist,sans-serif;letter-spacing:.12em;color:var(--acc);word-break:break-all">{{ shareUrl }}</div>
+          <div style="font:700 {{ h1Size }} Geist,sans-serif;letter-spacing:-.03em">{{ shareTitle }}</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;gap:8px;overflow:auto"><sc-for list="{{ catPills }}" as="p" hint-placeholder-count="4"><button onClick="{{ p.go }}" style="all:unset;cursor:pointer;height:40px;padding:0 14px;display:flex;align-items:center;flex:none;border-radius:99px;font:500 13px Inter,sans-serif;background:{{ p.bg }};border:1px solid {{ p.bd }};color:{{ p.fg }};transition:.2s" style-hover="border-color:var(--acc)">{{ p.n }}</button></sc-for></div>
+            <div style="display:flex;gap:8px;overflow:auto"><sc-for list="{{ yearPills }}" as="p" hint-placeholder-count="7"><button onClick="{{ p.go }}" style="all:unset;cursor:pointer;height:40px;padding:0 14px;display:flex;align-items:center;flex:none;border-radius:99px;font:500 13px Inter,sans-serif;background:{{ p.bg }};border:1px solid {{ p.bd }};color:{{ p.fg }};transition:.2s" style-hover="border-color:var(--acc)">{{ p.n }}</button></sc-for></div>
+            <div style="display:flex;gap:8px;overflow:auto"><sc-for list="{{ monthPills }}" as="p" hint-placeholder-count="13"><button onClick="{{ p.go }}" style="all:unset;cursor:pointer;height:40px;padding:0 14px;display:flex;align-items:center;flex:none;border-radius:99px;font:500 13px Inter,sans-serif;background:{{ p.bg }};border:1px solid {{ p.bd }};color:{{ p.fg }};transition:.2s" style-hover="border-color:var(--acc)">{{ p.n }}</button></sc-for><button onClick="{{ shuffle }}" style="all:unset;cursor:pointer;height:40px;padding:0 14px;display:flex;align-items:center;flex:none;border-radius:99px;font:600 13px Geist,sans-serif;color:var(--acc2);border:1px dashed color-mix(in srgb,var(--acc2) 50%,transparent)" style-hover="background:color-mix(in srgb,var(--acc2) 12%,transparent)">{{ i.k17 }}</button></div>
+          </div>
+          <sc-if value="{{ noTop }}" hint-placeholder-val="{{ false }}"><div style="padding:36px 0;text-align:center;color:var(--muted);font-size:14px">{{ i.k18 }}</div></sc-if>
+          <div style="display:grid;grid-template-columns:{{ shareCols }};gap:12px">
+            <sc-for list="{{ topCards }}" as="s" hint-placeholder-count="4"><div style="aspect-ratio:3/4;border-radius:16px;background:linear-gradient(160deg,{{ s.c1 }},{{ s.c2 }});padding:12px;display:flex;flex-direction:column;justify-content:space-between"><span style="font:700 24px Geist,sans-serif;color:rgba(255,255,255,.45)">#{{ s.i }}</span><div><div style="font:600 14px Geist,sans-serif;color:#F1F5F9">{{ s.title }}</div><div style="font-size:12px;color:#CBD5E1;margin-top:2px">{{ s.r }} / 10</div></div></div></sc-for>
+          </div>
+          <button onClick="{{ copyLink }}" style="all:unset;cursor:pointer;align-self:flex-start;height:44px;padding:0 20px;display:flex;align-items:center;border-radius:14px;background:var(--acc);color:var(--onacc);font:600 15px Geist,sans-serif" style-hover="box-shadow:0 0 24px color-mix(in srgb,var(--acc) 60%,transparent)">{{ i.k19 }}</button>
+        </div>
+      </sc-if>
+    </div>
+  </main>
+
+  <sc-if value="{{ showNav }}" hint-placeholder-val="{{ true }}">
+    <nav style="position:fixed;left:50%;transform:translateX(-50%);width:calc(100% - 24px);max-width:560px;bottom:calc(12px + env(safe-area-inset-bottom));height:68px;border-radius:22px;background:var(--glass2);backdrop-filter:blur(18px);border:1px solid rgba(148,163,184,.2);display:flex;padding:6px;gap:4px;z-index:20">
+      <sc-for list="{{ nav }}" as="n" hint-placeholder-count="5"><button onClick="{{ n.go }}" style="all:unset;cursor:pointer;flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-radius:16px;font:500 11px Inter,sans-serif;color:{{ n.color }};background:{{ n.bg }};transition:.2s"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.d }}"/></svg>{{ n.short }}</button></sc-for>
+    </nav>
+  </sc-if>
+
+  <sc-if value="{{ dt.open }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;z-index:45;background:radial-gradient(900px 500px at 80% -10%,color-mix(in srgb,var(--acc) 12%,transparent),transparent),var(--bg);overflow:auto;animation:pop .2s both">
+      <div style="max-width:880px;margin:0 auto;padding:calc(16px + env(safe-area-inset-top)) 16px calc(40px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+          <button onClick="{{ dt.back }}" style="all:unset;cursor:pointer;height:44px;padding:0 18px;display:flex;align-items:center;border-radius:14px;font:600 14px Geist,sans-serif;background:var(--glass);border:1px solid rgba(148,163,184,.18)" style-hover="border-color:var(--acc)">{{ i.k20 }}</button>
+          <button onClick="{{ dt.edit }}" aria-label="{{ i.k35 }}" style="all:unset;cursor:pointer;height:44px;padding:0 18px;display:flex;align-items:center;border-radius:14px;font:600 14px Geist,sans-serif;border:1px solid rgba(148,163,184,.25)" style-hover="border-color:var(--acc)">{{ i.k21 }}</button>
+        </div>
+        <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">
+          <div style="width:min(220px,100%);flex:none;aspect-ratio:3/4;border-radius:20px;background:{{ dt.bg }};box-shadow:0 20px 50px rgba(0,0,0,.45);display:flex;align-items:flex-end;padding:14px;font:700 40px Geist,sans-serif;color:rgba(255,255,255,.5)">{{ dt.ini }}</div>
+          <div style="flex:1;min-width:260px;display:flex;flex-direction:column;gap:14px">
+            <div><h2 style="margin:0;font:700 30px Geist,sans-serif;letter-spacing:-.03em">{{ dt.title }}</h2><div style="color:var(--text2);font-size:15px;margin-top:4px">{{ dt.en }}</div></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap"><sc-for list="{{ dt.chips }}" as="c" hint-placeholder-count="4"><span style="padding:5px 12px;border-radius:99px;background:rgba(148,163,184,.14);font-size:12px">{{ c }}</span></sc-for></div>
+            <div style="font-size:15px;line-height:1.6;color:var(--text2);text-wrap:pretty">{{ dt.desc }}</div>
+          </div>
+        </div>
+        <div style="border-radius:22px;padding:20px;background:var(--glass);backdrop-filter:blur(14px);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:14px"><div style="font:600 12px Geist,sans-serif;letter-spacing:.1em;color:var(--acc)">{{ i.k22 }}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><sc-for list="{{ dt.statuses }}" as="p" hint-placeholder-count="4"><button onClick="{{ p.go }}" style="all:unset;cursor:pointer;height:44px;padding:0 16px;display:flex;align-items:center;border-radius:99px;font:500 14px Inter,sans-serif;background:{{ p.bg }};border:1px solid {{ p.bd }};color:{{ p.fg }};transition:.2s" style-hover="border-color:var(--acc)">{{ p.n }}</button></sc-for></div>
+        </div>
+        <div style="border-radius:22px;padding:20px;background:var(--glass);backdrop-filter:blur(14px);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:14px"><div style="font:600 12px Geist,sans-serif;letter-spacing:.1em;color:var(--acc)">{{ i.k23 }}</div>
+          <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+            <button onClick="{{ dt.minus }}" aria-label="{{ i.k38 }}" style="all:unset;cursor:pointer;width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:1px solid rgba(148,163,184,.3);font:600 24px Geist,sans-serif" style-hover="border-color:var(--acc)">−</button>
+            <div style="font:700 44px Geist,sans-serif;letter-spacing:-.04em;line-height:1;min-width:120px;text-align:center">{{ dt.ep }}<span style="font-size:20px;color:var(--muted)"> / {{ dt.tot }}</span></div>
+            <button onClick="{{ dt.plus }}" aria-label="{{ i.k39 }}" style="all:unset;cursor:pointer;width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:var(--acc);color:var(--onacc);font:600 26px Geist,sans-serif;transform:{{ dt.scale }};box-shadow:{{ dt.glow }};transition:transform .18s cubic-bezier(.3,1.6,.5,1),box-shadow .3s">+</button>
+            <div style="font-size:13px;color:var(--muted)">{{ dt.sub }}</div>
+          </div>
+          <div style="height:8px;border-radius:4px;background:rgba(148,163,184,.18);overflow:hidden"><div style="height:100%;width:{{ dt.pct }};background:var(--acc);box-shadow:0 0 12px var(--acc);transition:width .4s"></div></div>
+          <sc-if value="{{ dt.hasPages }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:10px;padding-top:6px"><div style="font:600 12px Geist,sans-serif;letter-spacing:.1em;color:var(--acc)">{{ dt.pgTitle }}</div><div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap"><button onClick="{{ dt.pgMinus }}" style="all:unset;cursor:pointer;min-width:56px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:24px;border:1px solid rgba(148,163,184,.3);font:600 15px Geist,sans-serif" style-hover="border-color:var(--acc)">−10</button><div style="font:700 28px Geist,sans-serif;letter-spacing:-.03em;min-width:120px;text-align:center">{{ dt.pgVal }}<span style="font-size:16px;color:var(--muted)"> / {{ dt.pgTot }}</span></div><button onClick="{{ dt.pgPlus }}" style="all:unset;cursor:pointer;min-width:56px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:24px;background:var(--acc);color:var(--onacc);font:600 15px Geist,sans-serif" style-hover="box-shadow:0 0 22px color-mix(in srgb,var(--acc) 55%,transparent)">+10</button></div><div style="height:6px;border-radius:3px;background:rgba(148,163,184,.18);overflow:hidden"><div style="height:100%;width:{{ dt.pgPct }};background:var(--acc2);transition:width .4s"></div></div></div></sc-if>
+        </div>
+        <div style="border-radius:22px;padding:20px;background:var(--glass);backdrop-filter:blur(14px);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:14px"><div style="font:600 12px Geist,sans-serif;letter-spacing:.1em;color:var(--acc)">{{ dt.rateTitle }}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ dt.rates }}" as="p" hint-placeholder-count="10"><button onClick="{{ p.go }}" style="all:unset;cursor:pointer;width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:12px;font:600 15px Geist,sans-serif;background:{{ p.bg }};color:{{ p.fg }};border:1px solid {{ p.bd }}" style-hover="border-color:var(--acc)">{{ p.n }}</button></sc-for></div>
+        </div>
+        <div style="border-radius:22px;padding:20px;background:var(--glass);backdrop-filter:blur(14px);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:14px"><div style="font:600 12px Geist,sans-serif;letter-spacing:.1em;color:var(--acc)">{{ i.k24 }}</div>
+          <sc-if value="{{ dt.noRv }}" hint-placeholder-val="{{ false }}"><div style="color:var(--muted);font-size:14px">{{ i.k25 }}</div></sc-if>
+          <sc-for list="{{ dt.reviews }}" as="r" hint-placeholder-count="2"><div style="padding:14px 16px;border-radius:16px;background:color-mix(in srgb,var(--bg) 60%,transparent);border:1px solid rgba(148,163,184,.12);display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted)"><span>{{ r.a }}</span><span style="color:var(--acc)">{{ r.r }}</span></div><div style="font-size:15px;line-height:1.5">{{ r.t }}</div></div></sc-for>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><input value="{{ dt.rvText }}" onInput="{{ dt.setRv }}" placeholder="{{ i.k40 }}" style="all:unset;box-sizing:border-box;flex:1;min-width:200px;height:44px;padding:0 14px;border-radius:12px;background:var(--bg);border:1px solid rgba(148,163,184,.18);font:500 15px Inter,sans-serif;color:var(--text)" style-focus="border-color:var(--acc)"><button onClick="{{ dt.addRv }}" style="all:unset;cursor:pointer;height:44px;padding:0 18px;display:flex;align-items:center;border-radius:14px;font:600 14px Geist,sans-serif;background:var(--acc);color:var(--onacc)" style-hover="box-shadow:0 0 24px color-mix(in srgb,var(--acc) 60%,transparent)">{{ i.k26 }}</button></div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ ed.open }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ ed.outer }}" style="position:fixed;inset:0;background:{{ ed.wrapBg }};backdrop-filter:blur(6px);z-index:55;display:flex;justify-content:center;align-items:{{ ed.align }};overflow:auto;padding:{{ ed.oPad }}">
+      <div onClick="{{ stop }}" style="width:100%;max-width:{{ ed.cMax }};margin:{{ ed.cMargin }};border-radius:{{ ed.cR }};padding:{{ ed.cPad }};background:{{ ed.cBg }};border:{{ ed.cBd }};box-shadow:{{ ed.cSh }};display:flex;flex-direction:column;gap:16px;animation:{{ ed.cAnim }}">
+        <div style="display:flex;justify-content:space-between;align-items:center"><div style="font:700 20px Geist,sans-serif">{{ ed.heading }}</div><button onClick="{{ closeEd }}" aria-label="{{ i.k41 }}" style="all:unset;cursor:pointer;min-width:44px;height:44px;padding:0 12px;display:flex;align-items:center;justify-content:center;border-radius:12px;color:var(--muted);font:500 14px Inter,sans-serif" style-hover="background:rgba(148,163,184,.12)">{{ ed.closeLabel }}</button></div>
+        <div style="display:flex;gap:14px;align-items:center"><div style="width:72px;height:104px;flex:none;border-radius:12px;background:{{ ed.bg }};border:1px solid rgba(148,163,184,.2)"></div><div style="display:flex;flex-direction:column;gap:8px"><span style="font-size:12px;color:var(--muted)">{{ i.k27 }}</span><input id="poster-file" type="file" accept="image/*" onChange="{{ pickImg }}" style="display:none"><div style="display:flex;gap:8px;flex-wrap:wrap"><button onClick="{{ clickFile }}" style="all:unset;cursor:pointer;height:44px;padding:0 16px;display:flex;align-items:center;border-radius:12px;border:1px solid rgba(148,163,184,.25);font:600 14px Geist,sans-serif" style-hover="border-color:var(--acc)">{{ i.k28 }}</button><button onClick="{{ rmImg }}" style="all:unset;cursor:pointer;height:44px;padding:0 14px;display:flex;align-items:center;border-radius:12px;color:var(--muted);font-size:14px" style-hover="background:rgba(148,163,184,.12)">{{ i.k29 }}</button></div></div></div>
+        <div style="display:flex;flex-direction:column;gap:8px"><span style="font-size:12px;color:var(--muted)">{{ ed.typeLabel }}</span><div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{ ed.types }}" as="p" hint-placeholder-count="5"><button onClick="{{ p.go }}" style="all:unset;cursor:pointer;height:40px;padding:0 16px;display:flex;align-items:center;border-radius:99px;font:500 14px Inter,sans-serif;background:{{ p.bg }};border:1px solid {{ p.bd }};color:{{ p.fg }}" style-hover="border-color:var(--acc)">{{ p.n }}</button></sc-for></div></div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+          <sc-for list="{{ ed.fields }}" as="f" hint-placeholder-count="6">
+            <label style="display:flex;flex-direction:column;gap:6px;grid-column:{{ f.span }}"><span style="font-size:12px;color:var(--muted)">{{ f.l }}</span><input value="{{ f.v }}" type="{{ f.type }}" onInput="{{ f.on }}" style="all:unset;box-sizing:border-box;height:44px;padding:0 14px;border-radius:12px;background:var(--bg);border:1px solid rgba(148,163,184,.18);font:500 15px Inter,sans-serif;color:var(--text)" style-focus="border-color:var(--acc)"></label>
+          </sc-for>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px"><span style="font-size:12px;color:var(--muted)">{{ i.k30 }}</span><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ ed.rates }}" as="p" hint-placeholder-count="10"><button onClick="{{ p.go }}" style="all:unset;cursor:pointer;width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:12px;font:600 15px Geist,sans-serif;background:{{ p.bg }};color:{{ p.fg }};border:1px solid {{ p.bd }}" style-hover="border-color:var(--acc)">{{ p.n }}</button></sc-for></div></div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <span style="font-size:12px;color:var(--muted)">{{ i.k11 }}</span>
+          <div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{ ed.genres }}" as="g" hint-placeholder-count="2"><button onClick="{{ g.rm }}" style="all:unset;cursor:pointer;height:36px;padding:0 14px;display:flex;align-items:center;gap:8px;border-radius:99px;background:color-mix(in srgb,var(--acc) 14%,transparent);border:1px solid color-mix(in srgb,var(--acc) 35%,transparent);font-size:13px" style-hover="background:rgba(244,114,182,.2)">{{ g.n }} ✕</button></sc-for></div>
+          <div style="display:flex;gap:8px"><input value="{{ ed.gi }}" onInput="{{ setGi }}" onKeyDown="{{ giKey }}" placeholder="{{ i.k42 }}" style="all:unset;box-sizing:border-box;flex:1;min-width:0;height:44px;padding:0 14px;border-radius:12px;background:var(--bg);border:1px solid rgba(148,163,184,.18);font:500 15px Inter,sans-serif;color:var(--text)" style-focus="border-color:var(--acc)"><button onClick="{{ addGenre }}" style="all:unset;cursor:pointer;height:44px;padding:0 16px;display:flex;align-items:center;border-radius:12px;border:1px solid rgba(148,163,184,.25);font:600 14px Geist,sans-serif" style-hover="border-color:var(--acc)">{{ i.k31 }}</button></div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ ed.sugg }}" as="g" hint-placeholder-count="3"><button onClick="{{ g.add }}" style="all:unset;cursor:pointer;height:32px;padding:0 12px;display:flex;align-items:center;border-radius:99px;font-size:12px;color:var(--muted);border:1px dashed rgba(148,163,184,.3)" style-hover="color:var(--acc);border-color:var(--acc)">+ {{ g.n }}</button></sc-for></div>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap">
+          <sc-if value="{{ ed.canDelete }}" hint-placeholder-val="{{ false }}"><button onClick="{{ delItem }}" style="all:unset;cursor:pointer;height:44px;padding:0 16px;display:flex;align-items:center;border-radius:14px;color:#F472B6;font:600 14px Geist,sans-serif" style-hover="background:rgba(244,114,182,.12)">{{ i.k32 }}</button></sc-if>
+          <button onClick="{{ saveEd }}" style="all:unset;cursor:pointer;margin-left:auto;height:44px;min-width:140px;justify-content:center;padding:0 24px;display:flex;align-items:center;gap:10px;border-radius:14px;background:var(--acc);color:var(--onacc);font:600 15px Geist,sans-serif;box-shadow:0 0 22px color-mix(in srgb,var(--acc) 45%,transparent)" style-hover="box-shadow:0 0 32px color-mix(in srgb,var(--acc) 75%,transparent)"><sc-if value="{{ ed.saving }}" hint-placeholder-val="{{ false }}"><span style="width:16px;height:16px;border-radius:50%;border:2px solid rgba(4,32,28,.3);border-top-color:var(--onacc);animation:spin .7s linear infinite"></span></sc-if>{{ ed.saveLabel }}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;top:calc(16px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);padding:12px 18px;border-radius:14px;background:var(--pop);backdrop-filter:blur(14px);border:1px solid color-mix(in srgb,var(--acc) 40%,transparent);font:500 14px Inter,sans-serif;z-index:60;animation:pop .25s both;box-shadow:0 10px 30px rgba(0,0,0,.4)">{{ toast }}</div>
+  </sc-if>
+
+  <sc-if value="{{ palOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closePal }}" style="position:fixed;inset:0;background:rgba(2,6,23,.6);backdrop-filter:blur(6px);z-index:50;display:flex;justify-content:center;align-items:flex-start;padding:{{ palTop }} 12px 0">
+      <div onClick="{{ stop }}" style="width:100%;max-width:560px;border-radius:22px;background:var(--pop);border:1px solid color-mix(in srgb,var(--acc) 35%,transparent);box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 40px color-mix(in srgb,var(--acc) 12%,transparent);overflow:hidden;animation:pop .2s both">
+        <input id="pal-input" value="{{ q }}" onInput="{{ setQ }}" onKeyDown="{{ palKey }}" placeholder="{{ i.k43 }}" style="all:unset;box-sizing:border-box;width:100%;padding:18px 20px;font:500 17px Geist,sans-serif;border-bottom:1px solid rgba(148,163,184,.15);color:var(--text)">
+        <div style="padding:8px;max-height:360px;overflow:auto;display:flex;flex-direction:column;gap:2px">
+          <sc-for list="{{ results }}" as="r" hint-placeholder-count="4">
+            <button onClick="{{ r.run }}" style="all:unset;cursor:pointer;padding:12px;border-radius:12px;display:flex;justify-content:space-between;gap:10px;font-size:14px;background:{{ r.bg }}" style-hover="background:rgba(148,163,184,.12)"><span>{{ r.label }}</span><span style="color:var(--faint);font-size:12px">{{ r.kind }}</span></button>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { chat:[], chatIn:'', typing:false, statP:0, cq:'', sugOpen:false, fOpen:false, fGenres:[], fYear:'all', fStatus:'all', fSort:'pop', cmenu:null, catView:'discover', savedAt:(function(){try{return (JSON.parse(localStorage.getItem('episodio-db'))||{}).savedAt||0;}catch(e){return 0;}})(), tfilter:'all', lastId:null, lang:(function(){try{return localStorage.getItem('episodio-lang')==='en'?'en':'ru';}catch(e){return 'ru';}})(), theme:(function(){try{return localStorage.getItem('episodio-theme')==='light'?'light':'dark';}catch(e){return 'dark';}})(), saving:false, detail:null, cfilter:'all', rvText:'', menu:false, scat:'anime', syear:2026, smonth:0, ed:null, tab:'home', w: window.innerWidth, pal:false, q:'', sel:0, pulse:null, toast:'', note:'', ai:false, review:null, mood:0,
+    items:[
+      {id:1,type:'anime',st:'watching',desc:'Человечество укрылось за стенами от гигантских титанов. Эрен Йегер вступает в разведкорпус, чтобы узнать, что скрывается за ними.',rv:[{a:'Вы',t:'Финал перевернул всё, что я думал о первых сезонах. Слабоват темп последних серий.',r:9}],rate:9,en:'Attack on Titan',t:'Атака титанов',g:['Экшен','Драма'],c:'Япония',y:2013,ep:61,tot:87,h:[250,215]},
+      {id:2,type:'anime',st:'watching',desc:'Старшеклассник Юдзи Итадори проглатывает проклятый палец и попадает в мир магов, борющихся с проклятиями.',rv:[],rate:8,en:'Jujutsu Kaisen',t:'Магическая битва',g:['Экшен','Фэнтези'],c:'Япония',y:2020,ep:24,tot:47,h:[265,300]},
+      {id:3,type:'series',st:'done',desc:'Писатель Хэнк Муди переживает кризис в Лос-Анджелесе, разрываясь между творчеством, дочерью и бывшей любовью.',rv:[{a:'Вы',t:'Циничный и тёплый одновременно. Пересматриваю первый сезон.',r:9}],rate:9,en:'Californication',t:'Блудливая Калифорния',g:['Комедия','Драма'],c:'США',y:2007,ep:84,tot:84,h:[30,10]},
+      {id:4,type:'anime',st:'watching',desc:'После победы над Королём демонов эльфийка Фрирен отправляется в путь, чтобы лучше понять людей.',rv:[],rate:10,en:'Frieren: Beyond Journey\'s End',t:'Фрирен',g:['Фэнтези','Драма'],c:'Япония',y:2023,ep:18,tot:28,h:[170,200]},
+      {id:5,type:'series',st:'watching',desc:'Шеф-повар из мира высокой кухни возвращается в Чикаго, чтобы спасти семейный ресторан.',rv:[],rate:8,en:'The Bear',t:'Медведь',g:['Драма','Комедия'],c:'США',y:2022,ep:20,tot:28,h:[15,350]},
+      {id:6,type:'series',st:'done',desc:'Современный Лондон и гениальный консультирующий детектив со своим соседом, доктором Ватсоном.',rv:[],en:'Sherlock',t:'Шерлок',g:['Детектив','Драма'],c:'Великобритания',y:2010,ep:13,tot:13,h:[220,240]},{id:7,type:'series',st:'planned',desc:'Приквел «Дюны»: основание ордена Бене Гессерит за десять тысяч лет до рождения Пола Атрейдеса.',rv:[],rate:0,en:'Dune: Prophecy',t:'Дюна: Пророчество',g:['Фантастика','Драма'],c:'США',y:2024,ep:0,tot:6,h:[35,20]},{id:8,type:'book',st:'watching',desc:'Пол Атрейдес и его семья получают во владение пустынную планету Арракис, единственный источник пряности.',rv:[],rate:0,en:'Dune',t:'Дюна',g:['Фантастика','Драма'],c:'США',y:1965,ep:12,tot:48,pg:310,pgTot:704,h:[40,25]},{id:9,type:'manga',st:'watching',desc:'Наёмник Гатс идёт по тёмному миру, мстя тому, кто предал его отряд.',rv:[],rate:10,en:'Berserk',t:'Берсерк',g:['Экшен','Фэнтези'],c:'Япония',y:1989,ep:120,tot:364,h:[0,330]},{id:10,type:'movie',st:'done',desc:'Группа астронавтов отправляется через червоточину в поисках нового дома для человечества.',rv:[],rate:10,en:'Interstellar',t:'Интерстеллар',g:['Фантастика','Драма'],c:'США',y:2014,ep:1,tot:1,h:[220,260]}],
+    log:[{day:'СЕГОДНЯ',title:'Фрирен',ep:18,time:'22:40'},{day:'СЕГОДНЯ',title:'Магическая битва',ep:24,time:'19:15'},{day:'ВЧЕРА',title:'Атака титанов',ep:61,time:'23:05'},{day:'ВЧЕРА',title:'Медведь',ep:20,time:'21:30'},{day:'3 ДНЯ НАЗАД',title:'Блудливая Калифорния',ep:84,time:'20:10'}] };
+  componentDidMount(){
+    try{ if(!localStorage.getItem('episodio-user')&&!sessionStorage.getItem('episodio-user')&&location.protocol!=='blob:'){ location.replace('Login.dc.html'); return; } }catch(e){}
+    document.documentElement.setAttribute('lang',this.state.lang);
+    this.applyTheme(this.state.theme);
+    if(location.hash==='#add') setTimeout(()=>this.openEd(null),300);
+    this.rs=()=>this.setState({w:window.innerWidth});
+    this.kd=e=>{ if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();this.openPal();} else if(e.key==='Escape'){ this.closePal(); this.setState({menu:false}); } };
+    window.addEventListener('resize',this.rs); window.addEventListener('keydown',this.kd);
+  }
+  componentDidUpdate(){ const st=this.state, was=this.prevTab; this.prevTab=st.tab;
+    const n=st.chat.length*2+(st.typing?1:0)+(st.tab==='ai'?100000:0); if(this.chatN!==n){ this.chatN=n; const bx=document.getElementById('chat-box'); if(bx) bx.scrollTop=bx.scrollHeight; }
+    if(st.tab!=='stats'){ this.statRun=null; if(st.statP!==0) this.setState({statP:0}); return; }
+    if(was!=='stats'){ const run={}; this.statRun=run; const t0=performance.now()+150, step=(n)=>{ if(this.statRun!==run) return; const p=Math.max(0,Math.min(1,(n-t0)/1800)); this.setState({statP:p}); if(p<1) requestAnimationFrame(step); }; requestAnimationFrame(step); } }
+  componentWillUnmount(){ window.removeEventListener('resize',this.rs); window.removeEventListener('keydown',this.kd); }
+  D={"АККАУНТ":"ACCOUNT","Выйти":"Sign out","Вы вошли как ":"Signed in as ","Эпи":"Epi","Э":"E","печатает…":"typing…","Ваш компаньон в Episodio":"Your companion in Episodio","Привет! Я Эпи, ваш компаньон в Episodio. Подскажу, что вышло, что осталось досмотреть, и найду, что взять дальше. С чего начнём?":"Hi! I am Epi, your companion in Episodio. I will tell you what is out, what is left to finish, and find what to pick next. Where shall we start?","Что вышло нового?":"What's new?","Что можно досмотреть?":"What can I finish?","Посоветуй что-нибудь":"Recommend something","Рецензия: серия топ, но концовка слита":"Review: great episode, but the ending is rushed","Напишите Эпи…":"Message Epi…","Отправить":"Send","Выходит сейчас из ваших тайтлов:":"Currently airing from your titles:","По вашим тайтлам пока тишина, новых серий нет.":"All quiet on your titles, no new episodes yet.","Скоро выйдет:":"Coming soon:"," — выходит, ваш прогресс ":" — airing, your progress "," — ожидается":" — announced","Давайте добьём начатое. Ближе всего к финалу:":"Let us finish what you started. Closest to the end:"," — осталось ":" — left: ","Всё досмотрено! Можно выбрать что-то новое: просто спросите, что посоветовать.":"Everything is finished! Ask me what to pick next.","Отметить: ":"Mark: ","Вот что нашлось по вашим жанрам, надеюсь, что-то зацепит:":"Here is what I found for your genres, hope something clicks:"," — совпадают жанры: ":" — matching genres: ","В планы: ":"To plan: ","Оценка: ":"Rating: ","Теги: ":"Tags: ","Готово, вот как это выглядит в виде рецензии.":"Done, here is how it looks as a review.","Расскажу, что вышло, подскажу, что досмотреть, и посоветую новое. А ещё могу превратить ваши впечатления в рецензию: просто напишите пару слов.":"I will tell you what is out, what to finish, and what to try next. I can also turn your impressions into a review, just write a few words.","Нет рекомендаций: каталог уже в вашей библиотеке.":"No recommendations: the catalog is already in your library.","Поиск по каталогу: название, оригинал…":"Search the catalog: title, original…","Фильтры":"Filters","Сбросить":"Reset","Год выпуска":"Release year","Сортировка":"Sort by","Любой":"Any","до 2000":"before 2000","Выходит":"Ongoing","Завершён":"Finished","Анонс":"Announced","По рейтингу":"By rating","По популярности":"By popularity","Новинки":"New releases","Сериалы":"Series","Фильмы":"Movies","Книги":"Books","Обзор":"Discover","Моя библиотека":"My library","Популярное сейчас":"Popular now","Чаще всего добавляют другие пользователи":"Most added by other users","Топ в жанре ":"Top in ","AI рекомендует вам":"AI recommends for you","На основе ваших тайтлов: ":"Based on your titles: ","Топ недели":"Top of the week","Новинка сезона":"New this season","Популярное":"Popular","Найдено: ":"Found: ","Ничего не найдено":"Nothing found","+ Добавить":"+ Add","В библиотеке":"In library","Добавлено: ":"Added: ","В планы":"To plan","Южная Корея":"South Korea","СССР":"USSR","Китай":"China","Польша":"Poland","Лучшие по оценке":"Top rated","ДАННЫЕ":"DATA","Резервная копия":"Backup","Экспорт":"Export","Сохранить базу данных":"Save database","Восстановить базу данных":"Restore database","Восстановить базу данных из файла":"Restore database from file","Экспорт в JSON":"Export as JSON","Экспорт в TXT":"Export as TXT","Экспорт в Excel":"Export to Excel","Последняя копия: ":"Last copy: ","Копия ещё не сохранялась":"No copy saved yet","База сохранена":"Database saved","Не удалось сохранить":"Could not save","Сохранённой копии нет":"No saved copy","База восстановлена":"Database restored","Файл не подошёл":"Invalid file","Статус":"Status","Год":"Year","Прогресс":"Progress","Страниц":"Pages","Оценка":"Rating","Тайтлов: ":"Titles: ","Файл сохранён":"File saved",'В процессе':'In progress','Завершено':'Completed','Читаю':'Reading','Прочитано':'Read','Отметить главу ':'Mark chapter ','Отметить просмотр':'Mark as watched','Глава ':'Chapter ','Фильм':'Movie','Осталось глав: ':'Chapters left: ','Не просмотрен':'Not watched','Все главы прочитаны':'All chapters read','Фильм просмотрен':'Movie watched','Прочитано глав':'Chapters read','Всего глав':'Total chapters','Просмотрено':'Watched','Всего':'Total',' гл.':' ch.',' стр.':' pg.',' · глава ':' · chapter ',' · просмотрен':' · watched','Прочитано страниц':'Pages read','Всего страниц':'Total pages','СТРАНИЦЫ':'PAGES','Тип':'Type','Аниме':'Anime','Сериал':'Series','Фильм':'Movie','Книга':'Book','Манга':'Manga',' ч просмотра':' h watched',"Введите отзыв":"Write a review first","Отзыв добавлен":"Review added","Укажите название":"Enter a title","Сохранено":"Saved","Тайтл добавлен":"Title added","Тайтл удалён":"Title deleted","Ссылка скопирована":"Link copied","Весь год":"Whole year","Описание не добавлено. Его можно написать в режиме редактирования.":"No description yet. You can add one in edit mode.","Все серии просмотрены":"All episodes watched","не выставлена":"not rated","← Назад к просмотру":"← Back to view","Сохраняю…":"Saving…","Сохранить":"Save","Редактировать тайтл":"Edit title","Новый тайтл":"New title","Название":"Title","Название (English)":"Title (English)","Описание":"Description","Сезон":"Season","Год выхода":"Release year","Просмотрено серий":"Episodes watched","Всего серий":"Total episodes","Страна":"Country","Тёмная":"Dark","Светлая":"Light","Выбрана":"Selected","Все":"All","Анализирую…":"Analyzing…","Составить рецензию":"Write review","Уютное":"Cozy","Динамика":"Action-packed","Подумать":"Thought-provoking","Приложение":"App","Настройки":"Settings","Все тайтлы":"All titles","Сегодня":"Today","Добрый вечер":"Good evening","Дневник":"Diary","Лента активности":"Activity feed","Wrapped круглый год":"Wrapped all year","Компаньон":"Companion","Публичная страница":"Public page","Лента":"Feed","Витрина":"Showcase","Каталог":"Catalog","Дашборд":"Dashboard","Статистика":"Statistics","AI-компаньон":"AI companion","Действие":"Action","Навигация":"Navigation","Детали":"Details","Правка":"Edit","Добавить":"Add","Отметить серию: ":"Mark episode: ","Перейти: ":"Go to: ","Открыть: ":"Open: ","Редактировать: ":"Edit: ","Добавить тайтл «":"Add title «","С":"S","Сезон ":"Season ","Осталось серий: ":"Episodes left: "," из 10":" of 10","свайп → отметить · ← детали":"swipe → mark · ← details","Отметить серию ":"Mark episode "," сер.":" ep.","Мой топ ":"My top ","Без жанра":"No genre","без оценки":"no rating","Сильная серия":"Strong episode",", но развязка оставила вопросы: ожидания были выше.":", but the resolution left questions: expectations were higher."," с уверенной подачей.":" with confident delivery."," Заметки: «":" Notes: «",": все серии просмотрены":": all episodes watched"," · серия ":" · episode ","Смотрю":"Watching","В планах":"Planned","Просмотрено":"Watched","Брошено":"Dropped","Пн":"Mon","Вт":"Tue","Ср":"Wed","Чт":"Thu","Пт":"Fri","Сб":"Sat","Вс":"Sun","янв":"Jan","фев":"Feb","мар":"Mar","апр":"Apr","май":"May","июн":"Jun","июл":"Jul","авг":"Aug","сен":"Sep","окт":"Oct","ноя":"Nov","дек":"Dec","январь":"January","февраль":"February","март":"March","апрель":"April","июнь":"June","июль":"July","август":"August","сентябрь":"September","октябрь":"October","ноябрь":"November","декабрь":"December","аниме":"anime","сериал":"series","книга":"book","манга":"manga","сериалов":"series","книг":"books","манги":"manga","СЕГОДНЯ":"TODAY","ВЧЕРА":"YESTERDAY","3 ДНЯ НАЗАД":"3 DAYS AGO","Серия ":"Episode "," из ":" of ","ВАША ОЦЕНКА · ":"YOUR RATING · ","финал":"finale","сюжет":"plot","анимация":"animation","темп":"pace","эмоции":"emotions","Экшен":"Action","Драма":"Drama","Комедия":"Comedy","Фэнтези":"Fantasy","Детектив":"Mystery","Романтика":"Romance","Фантастика":"Sci-Fi","Триллер":"Thriller","Япония":"Japan","США":"USA","Великобритания":"UK","ПРОДОЛЖИТЬ":"CONTINUE","Эта неделя":"This week","Мои тайтлы":"My titles","+ Добавить тайтл":"+ Add title","Последняя рецензия · Атака титанов":"Latest review · Attack on Titan","Финал перевернул всё, что я думал о первых сезонах. Слабоват только темп последних трёх серий.":"The finale overturned everything I thought about the first seasons. Only the pace of the last three episodes is weak.","ТЕМА":"THEME","ЯЗЫК":"LANGUAGE","Жанры":"Genres","Страны":"Countries","Годы выхода":"Release years","Топ по сериям":"Top by episodes","Впечатление в двух словах":"Your impression in a few words","ЧТО ПОСМОТРЕТЬ ДАЛЬШЕ":"WHAT TO WATCH NEXT","Случайный период":"Random period","Нет записей за этот период":"No entries for this period","Поделиться":"Share","← Назад":"← Back","✎ Редактировать":"✎ Edit","СТАТУС":"STATUS","ВАШ ПРОГРЕСС":"YOUR PROGRESS","ОТЗЫВЫ":"REVIEWS","Отзывов пока нет":"No reviews yet","Добавить отзыв":"Add review","Постер":"Poster","Загрузить":"Upload","Убрать":"Remove","Личный рейтинг, 1–10":"Personal rating, 1–10","Удалить":"Delete","Поиск":"Search","Меню":"Menu","Редактировать":"Edit","Отметить серию":"Mark episode","серия топ, но концовка слита":"great episode, but the ending is rushed","Минус серия":"Previous episode","Плюс серия":"Next episode","Ваш отзыв":"Your review","Закрыть":"Close","Новый жанр":"New genre","JJK, Атака, Статистика…":"JJK, AoT, Stats…"};
+  U=(type)=>{ const t=this.tr;
+    if(type==='movie') return {u:'film',mark:t('Отметить просмотр'),line:t('Фильм'),left:t('Не просмотрен'),done:t('Фильм просмотрен'),w:t('Просмотрено'),t:t('Всего'),short:'',toast:t(' · просмотрен')};
+    if(type==='book'||type==='manga') return {u:'ch',mark:t('Отметить главу '),line:t('Глава '),left:t('Осталось глав: '),done:t('Все главы прочитаны'),w:t('Прочитано глав'),t:t('Всего глав'),short:t(' гл.'),toast:t(' · глава ')};
+    return {u:'ep',mark:t('Отметить серию '),line:t('Серия '),left:t('Осталось серий: '),done:t('Все серии просмотрены'),w:t('Просмотрено серий'),t:t('Всего серий'),short:t(' сер.'),toast:t(' · серия ')}; };
+  metaOf=(it)=>{ const t=this.tr, ty=it.type||'anime';
+    if(ty==='movie') return it.y+' · '+t(it.ep>=it.tot?'Фильм просмотрен':'Не просмотрен');
+    if(ty==='book') return it.ep+' / '+it.tot+t(' гл.')+' · '+(it.pg||0)+t(' стр.');
+    if(ty==='manga') return it.ep+' / '+it.tot+t(' гл.')+' · '+it.y;
+    return t('С')+(it.se||1)+' · '+it.ep+' / '+it.tot+' · '+it.y; };
+  stl=(k,type,n)=>{ const rd=type==='book'||type==='manga'; return k==='watching'?this.tr(rd?'Читаю':'Смотрю'):k==='done'?this.tr(rd?'Прочитано':'Просмотрено'):n; };
+  setPages=(id,d)=>this.upd(id,x=>{const pg=Math.max(0,Math.min(x.pgTot||0,(x.pg||0)+d));return {...x,pg,st:x.st==='planned'&&pg>0?'watching':x.st};});
+  rows(){ const t=this.tr, TY={anime:'Аниме',series:'Сериал',movie:'Фильм',book:'Книга',manga:'Манга'}, ST={watching:'В процессе',planned:'В планах',done:'Завершено',dropped:'Брошено'};
+    const head=[t('Название'),t('Название (English)'),t('Тип'),t('Статус'),t('Год'),t('Страна'),t('Жанры'),t('Сезон'),t('Прогресс'),t('Страниц'),t('Оценка'),t('Описание')];
+    const body=this.state.items.map(x=>[x.t,x.en||'',t(TY[x.type||'anime']),t(ST[x.st]||ST.planned),x.y,t(x.c),x.g.map(g=>t(g)).join(', '),['anime','series'].includes(x.type||'anime')?(x.se||1):'',x.ep+' / '+x.tot,x.type==='book'?(x.pg||0)+' / '+(x.pgTot||0):'',x.rate||'',x.desc||'']);
+    return {head,body}; }
+  download(name,mime,text){ const b=new Blob([text],{type:mime+';charset=utf-8'}), a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500); this.say(this.tr('Файл сохранён')); }
+  stamp(){ return new Date().toISOString().slice(0,10); }
+  exportJson=()=>this.download('episodio-'+this.stamp()+'.json','application/json',JSON.stringify({app:'Episodio',exportedAt:new Date().toISOString(),items:this.state.items,log:this.state.log},null,2));
+  exportTxt=()=>{ const {head,body}=this.rows(); this.download('episodio-'+this.stamp()+'.txt','text/plain','Episodio · '+this.tr('Тайтлов: ')+body.length+'\n\n'+body.map((r,i)=>(i+1)+'. '+r.map((v,k)=>v===''?null:head[k]+': '+v).filter(Boolean).join('\n   ')).join('\n\n')+'\n'); };
+  exportXls=()=>{ const {head,body}=this.rows(), e=v=>String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const html='<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"></head><body><table border="1"><tr>'+head.map(h=>'<th style="background:#0F172A;color:#fff">'+e(h)+'</th>').join('')+'</tr>'+body.map(r=>'<tr>'+r.map(v=>'<td>'+e(v)+'</td>').join('')+'</tr>').join('')+'</table></body></html>';
+    this.download('episodio-'+this.stamp()+'.xls','application/vnd.ms-excel','\ufeff'+html); };
+  saveDb=()=>{ const at=Date.now(); this.download('episodio-backup-'+this.stamp()+'.json','application/json',JSON.stringify({app:'Episodio',v:1,savedAt:new Date(at).toISOString(),items:this.state.items,log:this.state.log},null,2)); try{localStorage.setItem('episodio-db',JSON.stringify({savedAt:at}));}catch(e){} this.setState({savedAt:at}); };
+  applyDb=(d)=>{ const items=Array.isArray(d)?d:d&&d.items; if(!Array.isArray(items)||items.some(x=>!x||typeof x.t!=='string'||!Array.isArray(x.g))) { this.say(this.tr('Файл не подошёл')); return; } this.setState({items,log:Array.isArray(d.log)?d.log:this.state.log,detail:null,ed:null,lastId:null}); this.say(this.tr('База восстановлена')); };
+  restoreDb=()=>{ let d=null; try{ d=JSON.parse(localStorage.getItem('episodio-db')); }catch(e){} if(!d){ this.say(this.tr('Сохранённой копии нет')); return; } this.applyDb(d); };
+  pickDb=(e)=>{ const f=e.target.files&&e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ this.applyDb(JSON.parse(r.result)); }catch(x){ this.say(this.tr('Файл не подошёл')); } }; r.readAsText(f); e.target.value=''; };
+  pickFile=()=>{ const i=document.getElementById('db-file'); i&&i.click(); };
+  CAT=[{"id":1,"type":"anime","t":"Фрирен","en":"Frieren","y":2023,"g":["Фэнтези","Драма"],"c":"Япония","r":9.3,"p":95,"s":"o","tot":28,"h":170},{"id":2,"type":"anime","t":"Магическая битва","en":"Jujutsu Kaisen","y":2020,"g":["Экшен","Фэнтези"],"c":"Япония","r":8.6,"p":92,"s":"o","tot":47,"h":265},{"id":3,"type":"anime","t":"Атака титанов","en":"Attack on Titan","y":2013,"g":["Экшен","Драма"],"c":"Япония","r":9,"p":90,"s":"d","tot":87,"h":250},{"id":4,"type":"anime","t":"Монолог фармацевта","en":"The Apothecary Diaries","y":2023,"g":["Детектив","Драма"],"c":"Япония","r":8.9,"p":85,"s":"o","tot":24,"h":330},{"id":5,"type":"anime","t":"Клинок, рассекающий демонов","en":"Demon Slayer","y":2019,"g":["Экшен","Фэнтези"],"c":"Япония","r":8.5,"p":88,"s":"o","tot":55,"h":350},{"id":6,"type":"anime","t":"Ванпанчмен","en":"One-Punch Man","y":2015,"g":["Экшен","Комедия"],"c":"Япония","r":8.7,"p":80,"s":"o","tot":24,"h":45},{"id":7,"type":"anime","t":"Созданный в бездне","en":"Made in Abyss","y":2017,"g":["Фэнтези","Драма"],"c":"Япония","r":8.8,"p":70,"s":"o","tot":25,"h":200},{"id":8,"type":"anime","t":"Киберпанк: Бегущие по краю","en":"Cyberpunk: Edgerunners","y":2022,"g":["Фантастика","Экшен"],"c":"Япония","r":8.6,"p":78,"s":"d","tot":10,"h":290},{"id":9,"type":"anime","t":"Человек-бензопила","en":"Chainsaw Man","y":2022,"g":["Экшен","Триллер"],"c":"Япония","r":8.4,"p":86,"s":"o","tot":12,"h":10},{"id":10,"type":"anime","t":"Ковбой Бибоп","en":"Cowboy Bebop","y":1998,"g":["Фантастика","Экшен"],"c":"Япония","r":8.9,"p":75,"s":"d","tot":26,"h":215},{"id":11,"type":"series","t":"Медведь","en":"The Bear","y":2022,"g":["Драма","Комедия"],"c":"США","r":8.6,"p":88,"s":"o","tot":28,"h":15},{"id":12,"type":"series","t":"Шерлок","en":"Sherlock","y":2010,"g":["Детектив","Драма"],"c":"Великобритания","r":9.1,"p":84,"s":"d","tot":13,"h":220},{"id":13,"type":"series","t":"Блудливая Калифорния","en":"Californication","y":2007,"g":["Комедия","Драма"],"c":"США","r":8.3,"p":70,"s":"d","tot":84,"h":30},{"id":14,"type":"series","t":"Фоллаут","en":"Fallout","y":2024,"g":["Фантастика","Драма"],"c":"США","r":8.5,"p":93,"s":"o","tot":8,"h":60},{"id":15,"type":"series","t":"Сёгун","en":"Shogun","y":2024,"g":["Драма","Триллер"],"c":"США","r":8.9,"p":87,"s":"d","tot":10,"h":0},{"id":16,"type":"series","t":"Тед Лассо","en":"Ted Lasso","y":2020,"g":["Комедия","Драма"],"c":"США","r":8.8,"p":79,"s":"d","tot":34,"h":100},{"id":17,"type":"series","t":"Дюна: Пророчество","en":"Dune: Prophecy","y":2024,"g":["Фантастика","Драма"],"c":"США","r":7.9,"p":72,"s":"o","tot":6,"h":35},{"id":18,"type":"series","t":"Пингвин","en":"The Penguin","y":2024,"g":["Триллер","Драма"],"c":"США","r":8.7,"p":74,"s":"d","tot":8,"h":150},{"id":19,"type":"series","t":"Чернобыль","en":"Chernobyl","y":2019,"g":["Драма","Триллер"],"c":"США","r":9.4,"p":83,"s":"d","tot":5,"h":20},{"id":20,"type":"series","t":"Ведьмак","en":"The Witcher","y":2019,"g":["Фэнтези","Экшен"],"c":"США","r":8,"p":77,"s":"o","tot":24,"h":280},{"id":21,"type":"series","t":"Игра престолов: Рыцарь Семи королевств","en":"A Knight of the Seven Kingdoms","y":2026,"g":["Фэнтези","Драма"],"c":"США","r":0,"p":90,"s":"s","tot":6,"h":10},{"id":22,"type":"movie","t":"Интерстеллар","en":"Interstellar","y":2014,"g":["Фантастика","Драма"],"c":"США","r":8.7,"p":91,"s":"d","tot":1,"h":220},{"id":23,"type":"movie","t":"Дюна: Часть вторая","en":"Dune: Part Two","y":2024,"g":["Фантастика","Экшен"],"c":"США","r":8.5,"p":89,"s":"d","tot":1,"h":35},{"id":24,"type":"movie","t":"Бегущий по лезвию 2049","en":"Blade Runner 2049","y":2017,"g":["Фантастика","Триллер"],"c":"США","r":8,"p":76,"s":"d","tot":1,"h":190},{"id":25,"type":"movie","t":"Паразиты","en":"Parasite","y":2019,"g":["Триллер","Драма"],"c":"Южная Корея","r":8.5,"p":82,"s":"d","tot":1,"h":120},{"id":26,"type":"movie","t":"Твоё имя","en":"Your Name","y":2016,"g":["Романтика","Фэнтези"],"c":"Япония","r":8.4,"p":80,"s":"d","tot":1,"h":330},{"id":27,"type":"book","t":"Дюна","en":"Dune","y":1965,"g":["Фантастика","Драма"],"c":"США","r":8.7,"p":85,"s":"d","tot":48,"h":40},{"id":28,"type":"book","t":"Мастер и Маргарита","en":"The Master and Margarita","y":1967,"g":["Драма","Фэнтези"],"c":"СССР","r":9.2,"p":80,"s":"d","tot":32,"h":5},{"id":29,"type":"book","t":"Задача трёх тел","en":"The Three-Body Problem","y":2008,"g":["Фантастика","Триллер"],"c":"Китай","r":8.5,"p":78,"s":"d","tot":36,"h":200},{"id":30,"type":"book","t":"Проект «Аве Мария»","en":"Project Hail Mary","y":2021,"g":["Фантастика","Драма"],"c":"США","r":9,"p":90,"s":"d","tot":40,"h":215},{"id":31,"type":"book","t":"Ведьмак: Последнее желание","en":"The Last Wish","y":1993,"g":["Фэнтези","Экшен"],"c":"Польша","r":8.6,"p":75,"s":"d","tot":8,"h":280},{"id":32,"type":"book","t":"1984","en":"Nineteen Eighty-Four","y":1949,"g":["Фантастика","Драма"],"c":"Великобритания","r":8.8,"p":77,"s":"d","tot":23,"h":0},{"id":33,"type":"manga","t":"Берсерк","en":"Berserk","y":1989,"g":["Экшен","Фэнтези"],"c":"Япония","r":9.4,"p":88,"s":"o","tot":364,"h":0},{"id":34,"type":"manga","t":"Монстр","en":"Monster","y":1994,"g":["Детектив","Триллер"],"c":"Япония","r":9.1,"p":72,"s":"d","tot":162,"h":150},{"id":35,"type":"manga","t":"Ванпис","en":"One Piece","y":1997,"g":["Экшен","Фэнтези"],"c":"Япония","r":9,"p":95,"s":"o","tot":1130,"h":205},{"id":36,"type":"manga","t":"Вагабонд","en":"Vagabond","y":1998,"g":["Экшен","Драма"],"c":"Япония","r":9.2,"p":74,"s":"o","tot":327,"h":25},{"id":37,"type":"manga","t":"Человек-бензопила","en":"Chainsaw Man","y":2018,"g":["Экшен","Триллер"],"c":"Япония","r":8.7,"p":90,"s":"o","tot":200,"h":10},{"id":38,"type":"manga","t":"Хантер х Хантер","en":"Hunter x Hunter","y":1998,"g":["Экшен","Фэнтези"],"c":"Япония","r":9,"p":84,"s":"o","tot":410,"h":130},{"id":39,"type":"manga","t":"Токийский гуль","en":"Tokyo Ghoul","y":2011,"g":["Экшен","Триллер"],"c":"Япония","r":8.4,"p":80,"s":"d","tot":143,"h":280}].map(c=>({...c}));
+  addCat=(c,st)=>{ const id=Date.now()+c.id; this.setState(s=>({cmenu:null,lastId:id,items:[...s.items,{id,type:c.type,st,desc:'',rv:[],rate:0,en:c.en,t:c.t,g:c.g,c:c.c,y:c.y,ep:0,tot:c.tot,se:1,pg:0,pgTot:0,h:[c.h,(c.h+40)%360]}]})); this.say(this.tr('Добавлено: ')+(this.state.lang==='en'?c.en:c.t)); };
+  catData(){
+    const s=this.state, t=this.tr, en=s.lang==='en', CAT=this.CAT;
+    const pill=(on,n,go)=>({n,go,bg:on?'color-mix(in srgb,var(--acc) 18%,transparent)':'transparent',bd:on?'var(--acc)':'rgba(148,163,184,.25)',fg:on?'var(--acc)':'var(--text2)'});
+    const q=s.cq.trim().toLowerCase(), nm=c=>en?c.en:c.t;
+    const mine=c=>s.items.find(x=>x.t===c.t&&(x.type||'anime')===c.type);
+    const SN={o:'Выходит',d:'Завершён',s:'Анонс'}, hv=(h)=>'linear-gradient(160deg,hsl('+h+',55%,38%),hsl('+((h+40)%360)+',60%,22%))';
+    const yok=c=>s.fYear==='all'||(s.fYear==='2020'&&c.y>=2020)||(s.fYear==='2010'&&c.y>=2010&&c.y<2020)||(s.fYear==='2000'&&c.y>=2000&&c.y<2010)||(s.fYear==='old'&&c.y<2000);
+    const ini=c=>nm(c).split(/[\s:]+/).map(x=>x[0]).join('').slice(0,2).toUpperCase();
+    const list=CAT.filter(c=>s.tfilter==='all'||c.type===s.tfilter);
+    const active=!!q||s.fGenres.length>0||s.fYear!=='all'||s.fStatus!=='all'||s.fSort!=='pop';
+    const sorters={rating:(a,b)=>b.r-a.r,pop:(a,b)=>b.p-a.p,new:(a,b)=>b.y-a.y||b.p-a.p};
+    const menuFor=(c)=>[{label:this.stl('watching',c.type,''),go:()=>this.addCat(c,'watching')},{label:t('В планы'),go:()=>this.addCat(c,'planned')}];
+    const card=(c,sk)=>{ const m=mine(c), k=sk+'-'+c.id, open=s.cmenu===k;
+      const tg=()=>m?this.openDetail(m.id):this.setState({cmenu:open?null:k});
+      return {title:nm(c),sub:c.y+' · '+c.g.map(g=>t(g)).join(', '),rating:c.r?c.r.toFixed(1):'—',bg:hv(c.h),ini:ini(c),status:t(SN[c.s]),btn:m?t('В библиотеке'):t('+ Добавить'),btnBg:m?'rgba(2,6,23,.7)':'#2DD4BF',btnFg:m?'#E2E8F0':'#04201C',
+        open:tg,toggle:(e)=>{e&&e.stopPropagation&&e.stopPropagation();tg();},menuOpen:open,menu:menuFor(c)}; };
+    const res=list.filter(c=>(!q||c.t.toLowerCase().includes(q)||c.en.toLowerCase().includes(q))&&s.fGenres.every(g=>c.g.includes(g))&&yok(c)&&(s.fStatus==='all'||c.s===s.fStatus)).sort(sorters[s.fSort]);
+    const CAR='display:flex;gap:14px;overflow-x:auto;padding:4px 2px 8px;scroll-snap-type:x proximity', GRID='display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:18px 14px';
+    let shelves=[], heroes=[];
+    if(!active){
+      const pop=list.slice().sort(sorters.pop);
+      heroes=pop.slice(0,5).map((c,i)=>{ const m=mine(c), k='hero-'+c.id, open=s.cmenu===k, tg=()=>m?this.openDetail(m.id):this.setState({cmenu:open?null:k});
+        return {title:nm(c),line:c.y+' · '+c.g.map(g=>t(g)).join(', ')+' · '+t(SN[c.s]),rating:c.r?c.r.toFixed(1):'—',badge:i===0?t('Топ недели'):c.y>=2023?t('Новинка сезона'):t('Популярное'),
+          bg:'linear-gradient(to top,rgba(2,6,23,.8),rgba(2,6,23,.05) 70%),'+hv(c.h),btn:m?t('В библиотеке'):t('+ Добавить'),btnBg:m?'rgba(2,6,23,.7)':'#2DD4BF',btnFg:m?'#E2E8F0':'#04201C',open:tg,toggle:(e)=>{e&&e.stopPropagation&&e.stopPropagation();tg();},menuOpen:open,menu:menuFor(c)}; });
+      shelves.push({title:t('Популярное сейчас'),sub:t('Чаще всего добавляют другие пользователи'),cards:pop.slice(0,12).map(c=>card(c,'pop')),wrap:CAR,cw:'150px'});
+      const gc={}; list.forEach(c=>c.g.forEach(g=>{gc[g]=(gc[g]||0)+1;}));
+      Object.entries(gc).sort((a,b)=>b[1]-a[1]).slice(0,2).forEach(([g])=>{ shelves.push({title:t('Топ в жанре ')+t(g),sub:t('Лучшие по оценке'),cards:list.filter(c=>c.g.includes(g)&&c.r).sort(sorters.rating).slice(0,12).map(c=>card(c,'g'+g)),wrap:CAR,cw:'150px'}); });
+      const uc={}; s.items.forEach(x=>x.g.forEach(g=>{uc[g]=(uc[g]||0)+1;}));
+      const rec=list.filter(c=>!mine(c)).map(c=>({c,sc:c.g.reduce((a,g)=>a+(uc[g]||0),0)+c.r/10})).sort((a,b)=>b.sc-a.sc).slice(0,10).map(x=>x.c);
+      const topG=Object.entries(uc).sort((a,b)=>b[1]-a[1]).slice(0,3).map(x=>t(x[0])).join(', ');
+      if(rec.length) shelves.push({title:t('AI рекомендует вам'),sub:t('На основе ваших тайтлов: ')+topG,cards:rec.map(c=>card(c,'ai')),wrap:CAR,cw:'150px'});
+      shelves=shelves.filter(x=>x.cards.length);
+    } else shelves=[{title:t('Найдено: ')+res.length,sub:'',cards:res.map(c=>card(c,'r')),wrap:GRID,cw:'100%'}];
+    const allG=['Экшен','Драма','Комедия','Фэнтези','Детектив','Романтика','Фантастика','Триллер'];
+    const nf=s.fGenres.length+(s.fYear!=='all'?1:0)+(s.fStatus!=='all'?1:0)+(s.fSort!=='pop'?1:0);
+    const sug=q&&s.sugOpen?CAT.filter(c=>c.t.toLowerCase().includes(q)||c.en.toLowerCase().includes(q)).slice(0,5).map(c=>({label:nm(c),sub:t(({anime:'Аниме',series:'Сериал',movie:'Фильм',book:'Книга',manga:'Манга'})[c.type])+' · '+c.y,go:()=>this.setState({cq:nm(c),sugOpen:false})})):[];
+    return {q:s.cq,ph:t('Поиск по каталогу: название, оригинал…'),setQ:e=>this.setState({cq:e.target.value,sugOpen:true}),closeSug:()=>this.setState({sugOpen:false}),sugOpen:sug.length>0,sug,
+      toggleF:()=>this.setState({fOpen:!s.fOpen}),fOpen:s.fOpen,fLabel:t('Фильтры')+(nf?' · '+nf:''),fBd:nf||s.fOpen?'var(--acc)':'var(--line)',
+      reset:()=>this.setState({fGenres:[],fYear:'all',fStatus:'all',fSort:'pop',cq:''}),resetLabel:t('Сбросить'),
+      groups:[{label:t('Жанры'),pills:allG.map(g=>pill(s.fGenres.includes(g),t(g),()=>this.setState({fGenres:s.fGenres.includes(g)?s.fGenres.filter(x=>x!==g):[...s.fGenres,g]})))},
+        {label:t('Год выпуска'),pills:[['all',t('Любой')],['2020','2020+'],['2010','2010–2019'],['2000','2000–2009'],['old',t('до 2000')]].map(([k,n])=>pill(s.fYear===k,n,()=>this.setState({fYear:k})))},
+        {label:t('Статус'),pills:[['all',t('Любой')],['o',t('Выходит')],['d',t('Завершён')],['s',t('Анонс')]].map(([k,n])=>pill(s.fStatus===k,n,()=>this.setState({fStatus:k})))},
+        {label:t('Сортировка'),pills:[['pop',t('По популярности')],['rating',t('По рейтингу')],['new',t('Новинки')]].map(([k,n])=>pill(s.fSort===k,n,()=>this.setState({fSort:k})))}],
+      tabs:[['all',t('Все')],['series',t('Сериалы')],['anime',t('Аниме')],['movie',t('Фильмы')],['book',t('Книги')],['manga',t('Манга')]].map(([k,n])=>pill(s.tfilter===k,n,()=>this.setState({tfilter:k}))),
+      views:[['discover',t('Обзор')],['mine',t('Моя библиотека')]].map(([k,n])=>pill(s.catView===k,n,()=>this.setState({catView:k}))),
+      heroes,shelves,menuBackdrop:s.cmenu!==null,closeMenu:()=>this.setState({cmenu:null}),empty:active&&!res.length,emptyLabel:t('Ничего не найдено')}; }
+  chatData(){
+    const s=this.state, t=this.tr, pa=(x)=>({al:x.r==='u'?'flex-end':'flex-start',rad:x.r==='u'?'18px 18px 6px 18px':'18px 18px 18px 6px',bg:x.r==='u'?'var(--acc)':'var(--card)',fg:x.r==='u'?'var(--onacc)':'var(--text)',bd:x.r==='u'?'var(--acc)':'var(--line)',t:x.t,hasActs:!!(x.acts&&x.acts.length),acts:x.acts||[]});
+    const msgs=[pa({r:'a',t:t('Привет! Я Эпи, ваш компаньон в Episodio. Подскажу, что вышло, что осталось досмотреть, и найду, что взять дальше. С чего начнём?')}),...s.chat.map(pa)];
+    const send=(txt)=>this.sendChat(txt);
+    return {name:t('Эпи'),initial:t('Э'),sub:s.typing?t('печатает…'):t('Ваш компаньон в Episodio'),msgs,typing:s.typing,input:s.chatIn,ph:t('Напишите Эпи…'),sendLabel:t('Отправить'),setInput:e=>this.setState({chatIn:e.target.value}),send:()=>send(),key:e=>{if(e.key==='Enter'){e.preventDefault();send();}},
+      chips:['Что вышло нового?','Что можно досмотреть?','Посоветуй что-нибудь','Рецензия: серия топ, но концовка слита'].map(k=>({label:t(k),go:()=>send(t(k))}))}; }
+  sendChat=(txt)=>{ const text=(typeof txt==='string'?txt:this.state.chatIn).trim(); if(!text||this.state.typing) return; this.setState(s=>({chat:[...s.chat,{r:'u',t:text}],chatIn:'',typing:true})); setTimeout(()=>{ const rep=this.reply(text); this.setState(s=>({chat:[...s.chat,{r:'a',...rep}],typing:false})); },900); };
+  reply(text){
+    const l=text.toLowerCase(), t=this.tr, s=this.state, en=s.lang==='en', nm=(x)=>en&&x.en?x.en:x.t;
+    const mineOf=(c)=>s.items.find(x=>x.t===c.t&&(x.type||'anime')===c.type);
+    if(/рецензи|отзыв|review|концов|финал|сюжет|серия|ending|finale|plot/.test(l)){
+      const pos=['топ','круто','огонь','отлич','шедевр','класс','супер','great','awesome','amazing','love','best'].filter(w=>l.includes(w)).length, neg=['слит','скуч','слаб','затянут','плох','разочар','weak','boring','bad','slow','rushed','disappoint'].filter(w=>l.includes(w)).length;
+      const tags=[]; if(/концов|финал|ending|finale/.test(l)) tags.push(t('финал')); if(/сюжет|plot/.test(l)) tags.push(t('сюжет')); if(/анимац|animation/.test(l)) tags.push(t('анимация')); if(/темп|затянут|pace|slow/.test(l)) tags.push(t('темп')); if(!tags.length) tags.push(t('эмоции'));
+      const r=Math.max(3,Math.min(10,7+pos-neg*1.5)).toFixed(1).replace('.0','');
+      return {t:t('Готово, вот как это выглядит в виде рецензии.')+'\n\n'+t('Оценка: ')+r+' / 10\n'+t('Сильная серия')+(neg?t(', но развязка оставила вопросы: ожидания были выше.'):t(' с уверенной подачей.'))+'\n'+t('Теги: ')+tags.join(', ')};
+    }
+    if(/вышл|нов|выход|релиз|new|release|out|air/.test(l)){
+      const air=this.CAT.filter(c=>c.s==='o'&&mineOf(c)), soon=this.CAT.filter(c=>c.s==='s');
+      let out=air.length?t('Выходит сейчас из ваших тайтлов:')+'\n'+air.map(c=>{const m=mineOf(c);return '• '+nm(m)+t(' — выходит, ваш прогресс ')+m.ep+' / '+m.tot;}).join('\n'):t('По вашим тайтлам пока тишина, новых серий нет.');
+      if(soon.length) out+='\n\n'+t('Скоро выйдет:')+'\n'+soon.map(c=>'• '+(en?c.en:c.t)+' ('+c.y+')'+t(' — ожидается')).join('\n');
+      return {t:out,acts:soon.filter(c=>!mineOf(c)).map(c=>({label:t('В планы: ')+(en?c.en:c.t),go:()=>this.addCat(c,'planned')}))};
+    }
+    if(/досмотр|продолж|смотрю|читаю|finish|continue|watching|left|progress/.test(l)){
+      const w=s.items.filter(x=>x.st==='watching'&&x.ep<x.tot).sort((a,b)=>(a.tot-a.ep)/a.tot-(b.tot-b.ep)/b.tot).slice(0,4);
+      if(!w.length) return {t:t('Всё досмотрено! Можно выбрать что-то новое: просто спросите, что посоветовать.')};
+      return {t:t('Давайте добьём начатое. Ближе всего к финалу:')+'\n'+w.map(x=>'• '+nm(x)+t(' — осталось ')+(x.tot-x.ep)+' ('+Math.round(x.ep/x.tot*100)+'%)').join('\n'),acts:w.slice(0,3).map(x=>({label:t('Отметить: ')+nm(x),go:()=>this.mark(x.id)}))};
+    }
+    if(/посовет|рекоменд|что посмотр|что почитать|recommend|suggest|advice|something/.test(l)){
+      const uc={}; s.items.forEach(x=>x.g.forEach(g=>{uc[g]=(uc[g]||0)+1;}));
+      const rec=this.CAT.filter(c=>!mineOf(c)&&c.r).map(c=>({c,sc:c.g.reduce((a,g)=>a+(uc[g]||0),0)+c.r/10})).sort((a,b)=>b.sc-a.sc).slice(0,3).map(x=>x.c);
+      if(!rec.length) return {t:t('Нет рекомендаций: каталог уже в вашей библиотеке.')};
+      return {t:t('Вот что нашлось по вашим жанрам, надеюсь, что-то зацепит:')+'\n'+rec.map(c=>'• '+(en?c.en:c.t)+' ('+c.y+') ★ '+c.r.toFixed(1)+t(' — совпадают жанры: ')+c.g.map(g=>t(g)).join(', ')).join('\n'),acts:rec.map(c=>({label:t('В планы: ')+(en?c.en:c.t),go:()=>this.addCat(c,'planned')}))};
+    }
+    return {t:t('Расскажу, что вышло, подскажу, что досмотреть, и посоветую новое. А ещё могу превратить ваши впечатления в рецензию: просто напишите пару слов.')};
+  }
+  who(){ try{ const u=JSON.parse(localStorage.getItem('episodio-user')||sessionStorage.getItem('episodio-user')||'null'); return u&&u.login||'—'; }catch(e){ return '—'; } }
+  tr=(ru)=>(this.state.lang==='en'&&this.D[ru])?this.D[ru]:ru;
+  setLang=(l)=>{ this.setState({lang:l}); document.documentElement.setAttribute('lang',l); try{localStorage.setItem('episodio-lang',l);}catch(e){} };
+  applyTheme=(t)=>{ document.documentElement.setAttribute('data-theme',t); const m=document.querySelector('meta[name=theme-color]'); if(m) m.setAttribute('content',t==='light'?'#F8FAFC':'#0F172A'); };
+  setTheme=(t)=>{ this.setState({theme:t}); this.applyTheme(t); try{localStorage.setItem('episodio-theme',t);}catch(e){} };
+  openPal=()=>{ this.setState({pal:true,q:'',sel:0}); setTimeout(()=>{const i=document.getElementById('pal-input'); i&&i.focus();},50); };
+  closePal=()=>this.setState({pal:false});
+  say(m){ this.setState({toast:m}); clearTimeout(this.tt); this.tt=setTimeout(()=>this.setState({toast:''}),2000); }
+  mark=id=>{
+    const it=this.state.items.find(x=>x.id===id);
+    if(it.ep>=it.tot){ this.say(it.t+': '+this.U(it.type).done); return; }
+    const d=new Date(), time=('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
+    this.setState(s=>({items:s.items.map(x=>x.id===id?{...x,ep:x.ep+1,st:this.fixSt('watching',x.ep+1,x.tot)}:x),pulse:id,lastId:id,log:[{day:'СЕГОДНЯ',title:it.t,ep:it.ep+1,u:this.U(it.type).u,time},...s.log]}));
+    setTimeout(()=>this.setState({pulse:null}),220);
+    if(navigator.vibrate) navigator.vibrate(12);
+    this.say(it.t+this.U(it.type).toast+(it.type==='movie'?'':(it.ep+1)));
+  };
+  runAi=()=>{
+    const n=this.state.note.trim()||'серия топ, но концовка слита';
+    this.setState({ai:true});
+    setTimeout(()=>{
+      const l=n.toLowerCase(), pos=['топ','круто','огонь','отлич','шедевр','класс','супер','great','awesome','amazing','love','best'].filter(w=>l.includes(w)).length, neg=['слит','скуч','слаб','затянут','плох','разочар','weak','boring','bad','slow','rushed','disappoint'].filter(w=>l.includes(w)).length;
+      const tags=[]; if(l.includes('концов')||l.includes('финал')||l.includes('ending')||l.includes('finale')) tags.push(this.tr('финал')); if(l.includes('сюжет')) tags.push(this.tr('сюжет')); if(l.includes('анимац')) tags.push(this.tr('анимация')); if(l.includes('темп')||l.includes('затянут')) tags.push(this.tr('темп')); if(!tags.length) tags.push(this.tr('эмоции'));
+      const r=Math.max(3,Math.min(10,7+pos-neg*1.5));
+      this.setState({ai:false,review:{rating:r.toFixed(1).replace('.0',''),tags,text:this.tr('Сильная серия')+(neg?this.tr(', но развязка оставила вопросы: ожидания были выше.'):this.tr(' с уверенной подачей.'))+this.tr(' Заметки: «')+n+'».'}});
+    },800);
+  };
+  openEd=(it)=>this.setState({detail:it?it.id:null,ed:it?{pg:String(it.pg||0),pgTot:String(it.pgTot||0),type:it.type||'anime',desc:it.desc||'',id:it.id,rate:it.rate||0,t:it.t,en:it.en||'',img:it.img||'',se:String(it.se||1),ep:String(it.ep),tot:String(it.tot),y:String(it.y),c:it.c,g:[...it.g],gi:''}:{pg:'0',pgTot:'0',type:'anime',desc:'',id:null,rate:0,t:'',en:'',img:'',se:'1',ep:'0',tot:'12',y:String(new Date().getFullYear()),c:'Япония',g:[],gi:''},pal:false});
+  closeEd=()=>this.setState({ed:null});
+  fixSt=(st,ep,tot)=>ep>=tot?'done':(st==='done'||(st==='planned'&&ep>0))?'watching':st;
+  openDetail=(id)=>this.setState({detail:id,rvText:'',menu:false,pal:false});
+  upd=(id,fn)=>this.setState(s=>({lastId:id,items:s.items.map(x=>x.id===id?fn(x):x)}));
+  setStatus=(id,st)=>this.upd(id,x=>({...x,st,ep:st==='done'?x.tot:st==='planned'?0:(st==='watching'&&x.ep>=x.tot?Math.max(0,x.tot-1):x.ep)}));
+  minus=(id)=>this.upd(id,x=>({...x,ep:Math.max(0,x.ep-1),st:x.st==='done'?'watching':x.st}));
+  setRate=(id,n)=>this.upd(id,x=>({...x,rate:x.rate===n?0:n}));
+  addReview=(id)=>{const t=this.state.rvText.trim(); if(!t){this.say(this.tr('Введите отзыв'));return;} this.upd(id,x=>({...x,rv:[{a:'Вы',t,r:x.rate?'★ '+x.rate:this.tr('без оценки')},...(x.rv||[])]})); this.setState({rvText:''}); this.say(this.tr('Отзыв добавлен'));};
+  clickFile=()=>{const i=document.getElementById('poster-file'); i&&i.click();};
+  pickImg=(e)=>{const f=e.target.files&&e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>this.setState(s=>({ed:{...s.ed,img:r.result}})); r.readAsDataURL(f);};
+  rmImg=()=>this.setState(s=>({ed:{...s.ed,img:''}}));
+  setEd=(k)=>(e)=>{const v=e.target.value; this.setState(s=>({ed:{...s.ed,[k]:v}}));};
+  addGenreVal=(n)=>{ n=(n||'').trim(); if(!n) return; this.setState(s=>({ed:{...s.ed,g:s.ed.g.some(x=>x.toLowerCase()===n.toLowerCase())?s.ed.g:[...s.ed.g,n[0].toUpperCase()+n.slice(1)],gi:''}})); };
+  saveEd=()=>{ const e=this.state.ed; if(!e.t.trim()){ this.say(this.tr('Укажите название')); return; } if(this.state.saving) return; this.setState({saving:true}); setTimeout(()=>{ this.setState({saving:false}); if(this.state.ed) this.doSave(); },650); };
+  doSave=()=>{
+    const e=this.state.ed, nid=Date.now(); if(!e.t.trim()){ this.say(this.tr('Укажите название')); return; }
+    const num=(v,d)=>{const n=parseInt(v,10);return isNaN(n)||n<0?d:n;};
+    const tot=e.type==='movie'?1:Math.max(1,num(e.tot,1)), ep=Math.min(num(e.ep,0),tot), pgTot=e.type==='book'?num(e.pgTot,0):0, pg=Math.min(num(e.pg,0),pgTot);
+    const base={pg,pgTot,type:e.type||'anime',desc:e.desc.trim(),rate:e.rate||0,t:e.t.trim(),en:e.en.trim(),img:e.img,se:Math.max(1,num(e.se,1)),ep,tot,y:num(e.y,2026),c:e.c.trim()||'—',g:e.g.length?e.g:[this.tr('Без жанра')]};
+    if(e.id) this.setState(s=>({ed:null,lastId:e.id,items:s.items.map(x=>x.id===e.id?{...x,...base,st:this.fixSt(x.st,ep,tot)}:x)}));
+    else this.setState(s=>({ed:null,lastId:nid,items:[...s.items,{...base,st:ep>0?'watching':'planned',rv:[],id:nid,h:[Math.floor(Math.random()*360),Math.floor(Math.random()*360)]}]}));
+    this.say(e.id?this.tr('Сохранено'):this.tr('Тайтл добавлен'));
+  };
+  delItem=()=>{ const id=this.state.ed.id; this.setState(s=>({ed:null,detail:null,items:s.items.filter(x=>x.id!==id)})); this.say(this.tr('Тайтл удалён')); };
+  showcase(hue){
+    const s=this.state, cats=[['anime','аниме'],['series','сериал'],['book','книга'],['manga','манга']].map(c=>[c[0],this.tr(c[1])]);
+    const L={anime:'Фрирен|Магическая битва|Атака титанов|Ванпанчмен|Реинкарнация безработного|Клинок рассекающий демонов|Человек-бензопила|Монолог фармацевта|Созданный в бездне|Эрго Прокси|Тетрадь смерти|Ковбой Бибоп|Евангелион|Госпожа Кагуя|Волчица и пряности|Врата Штейна|Код Гиасс|Тоскливая комната|ДжоДжо|Хвост феи',
+      series:'Медведь|Шерлок|Блудливая Калифорния|Во все тяжкие|Мир Дикого Запада|Наследники|Одни из нас|Тед Лассо|Фарго|Настоящий детектив|Чернобыль|Игра в кальмара|Очень странные дела|Пингвин|Фоллаут|Сёгун|Оленёнок|Рик и Морти|Острые козырьки|Дом Дракона',
+      book:'Дюна|Мастер и Маргарита|1984|Сто лет одиночества|Задача трёх тел|Проект «Аве Мария»|Властелин колец|Игра Эндера|Маленький принц|Анна Каренина|Тихий Дон|Мартин Иден|Хоббит|Шантарам|Атомные привычки|Sapiens|Ведьмак|Основание|Лавка чудес|Дорога',
+      manga:'Берсерк|Монстр|Ванпис|Человек-бензопила|Магическая битва|Вагабонд|Хантер х Хантер|Токийский гуль|Атака титанов|Тетрадь смерти|Клинок рассекающий демонов|Созданный в бездне|Ванпанчмен|Хеллсинг|Нана|Слэм-данк|Стальной алхимик|Дороро|Ванитас|Блич'};
+    const gen=['аниме','сериалов','книг','манги'].map(x=>this.tr(x));
+    const ci=cats.findIndex(c=>c[0]===s.scat), years=[2026,2025,2024,2023,2022,2021,2020];
+    const months=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'].map(x=>this.tr(x)), full=['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'].map(x=>this.tr(x));
+    const all=[]; L[s.scat].split('|').forEach((t,i)=>{for(let k=0;k<4;k++) all.push({t,y:years[(i*3+k*2+ci)%7],m:(i*7+k*5+ci*3)%12+1,r:10-((i*37+k*13+ci*11)%25)/10,h:(i*53+ci*80)%360});});
+    const rows=all.filter(x=>x.y===s.syear&&(!s.smonth||x.m===s.smonth)).sort((a,b)=>b.r-a.r).filter((x,i,a)=>a.findIndex(z=>z.t===x.t)===i).slice(0,4);
+    const pill=(on,n,go)=>({n,go,bg:on?'color-mix(in srgb,var(--acc) 18%,transparent)':'transparent',bd:on?'var(--acc)':'rgba(148,163,184,.25)',fg:on?'var(--acc)':'var(--text2)'});
+    const topCards=rows.map((x,i)=>({i:i+1,title:x.t,r:x.r.toFixed(1),c1:'hsl('+x.h+',55%,38%)',c2:'hsl('+((x.h+40)%360)+',60%,22%)'}));
+    return {topCards,noTop:!rows.length,
+      shareTitle:this.tr('Мой топ ')+gen[ci]+' '+s.syear+(s.smonth?', '+full[s.smonth-1]:''),
+      shareUrl:'EPISODIO.APP/U/ALEX/TOP-'+s.scat.toUpperCase()+'-'+s.syear+(s.smonth?'-'+String(s.smonth).padStart(2,'0'):''),
+      catPills:cats.map(c=>pill(c[0]===s.scat,c[1][0].toUpperCase()+c[1].slice(1),()=>this.setState({scat:c[0]}))),
+      yearPills:years.map(y=>pill(y===s.syear,String(y),()=>this.setState({syear:y}))),
+      monthPills:[pill(!s.smonth,this.tr('Весь год'),()=>this.setState({smonth:0})),...months.map((m,i)=>pill(s.smonth===i+1,m,()=>this.setState({smonth:i+1})))],
+      shuffle:()=>{const c=Math.floor(Math.random()*4),k=cats[c][0],ys=L[k].split('|'),pool=[];ys.forEach((t,i)=>{for(let j=0;j<4;j++)pool.push([years[(i*3+j*2+c)%7],(i*7+j*5+c*3)%12+1]);});const p=pool[Math.floor(Math.random()*pool.length)];this.setState({scat:k,syear:p[0],smonth:p[1]});}};
+  }
+  go(t){ return ()=>this.setState({tab:t,pal:false,menu:false,detail:null}); }
+  results(){
+    const q=this.state.q.trim().toLowerCase(), out=[];
+    const nv=[['home',this.tr('Дашборд')],['catalog',this.tr('Каталог')],['feed',this.tr('Лента')],['stats',this.tr('Статистика')],['ai',this.tr('AI-компаньон')],['share',this.tr('Витрина')]];
+    this.state.items.forEach(it=>{
+      const hay=(it.t+' '+(it.t.split(' ').map(w=>w[0]).join(''))+' jjk aot').toLowerCase();
+      if(!q||hay.includes(q)||(q==='jjk'&&it.id===2)||(q==='aot'&&it.id===1)) {
+        out.push({label:this.tr('Отметить серию: ')+it.t,kind:this.tr('Действие'),run:()=>{this.mark(it.id);this.closePal();}});
+      }
+    });
+    nv.forEach(([id,l])=>{ if(!q||l.toLowerCase().includes(q)) out.push({label:this.tr('Перейти: ')+l,kind:this.tr('Навигация'),run:this.go(id)}); });
+    if(q) out.push({label:this.tr('Добавить тайтл «')+this.state.q+'»',kind:this.tr('Добавить'),run:()=>{this.openEd(null);this.setState(s=>({ed:{...s.ed,t:s.q}}));}});
+    this.state.items.forEach(it=>{ if(q&&it.t.toLowerCase().includes(q)){ out.push({label:this.tr('Открыть: ')+it.t,kind:this.tr('Детали'),run:()=>this.openDetail(it.id)}); out.push({label:this.tr('Редактировать: ')+it.t,kind:this.tr('Правка'),run:()=>this.openEd(it)}); } });
+    return out.slice(0,8);
+  }
+  renderVals(){
+    const s=this.state, w=s.w, isDesktop=w>=900, isMobile=!isDesktop, narrow=w<560;
+    const TY=[['anime','Аниме'],['series','Сериал'],['movie','Фильм'],['book','Книга'],['manga','Манга']], tn=k=>this.tr((TY.find(t=>t[0]===k)||TY[0])[1]);
+    const hue=h=>['hsl('+h[0]+',55%,38%)','hsl('+h[1]+',60%,22%)'];
+    const ini=t=>t.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase();
+    const tabs=[['home',this.tr('Дашборд'),this.tr('Дашборд'),'M4 4h7v7H4z M13 4h7v7h-7z M4 13h7v7H4z M13 13h7v7h-7z'],['catalog',this.tr('Каталог'),this.tr('Каталог'),'M4 5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2z M8 3v18'],['ai','AI','AI','M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z M18 16l.8 2.2L21 19l-2.2.8L18 22l-.8-2.2L15 19l2.2-.8z'],['stats',this.tr('Статистика'),this.tr('Статистика'),'M4 20V4 M4 20h16 M7 15l4-4 3 3 5-6']];
+    const nav=tabs.map(([id,label,short,d])=>({label,short,d,go:this.go(id),color:s.tab===id?'var(--acc)':'var(--muted)',bg:s.tab===id?'color-mix(in srgb,var(--acc) 12%,transparent)':'transparent'}));
+    const titles={settings:[this.tr('Приложение'),this.tr('Настройки')],catalog:[this.tr('Все тайтлы'),this.tr('Каталог')],home:[this.tr('Сегодня'),this.tr('Добрый вечер')],feed:[this.tr('Дневник'),this.tr('Лента активности')],stats:[this.tr('Wrapped круглый год'),this.tr('Статистика')],ai:[this.tr('AI-компаньон'),this.tr('Эпи')],share:[this.tr('Публичная страница'),this.tr('Витрина')]};
+    const heroItem=s.items.find(x=>x.id===s.lastId)||s.items.filter(x=>x.ep<x.tot)[0]||s.items[0];
+    const swipe=it=>{ let x0=0; return {ts:e=>{x0=e.touches[0].clientX;},te:e=>{const dx=e.changedTouches[0].clientX-x0; if(dx>60) this.mark(it.id); else if(dx<-60) this.openDetail(it.id);}}; };
+    const bgOf=(img,h)=>img?'url("'+img+'") center/cover':'linear-gradient('+'160deg,'+hue(h)[0]+','+hue(h)[1]+')';
+    const shown=s.tab==='catalog'?s.items.filter(x=>(s.cfilter==='all'||x.st===s.cfilter)&&(s.tfilter==='all'||(x.type||'anime')===s.tfilter)):s.items;
+    const cards=shown.map(it=>{const [c1,c2]=hue(it.h),p=swipe(it);return {...p,open:()=>this.openDetail(it.id),rate:'★ '+(it.rate||'—')+' · '+tn(it.type),edit:(e)=>{e&&e.stopPropagation&&e.stopPropagation();this.openEd(it);},meta:this.metaOf(it),title:s.lang==='en'&&it.en?it.en:it.t,ep:it.ep,total:it.tot,year:it.y,ini:it.img?'':ini(it.t),en:s.lang==='en'?(it.en?it.t:''):(it.en||''),bg:bgOf(it.img,it.h),c1,c2,pct:Math.round(it.ep/it.tot*100)+'%',mark:(e)=>{e&&e.stopPropagation&&e.stopPropagation();this.mark(it.id);},scale:s.pulse===it.id?'scale(1.25)':'scale(1)',glow:s.pulse===it.id?'0 0 28px var(--acc)':'0 0 0 var(--acc)'};});
+    const [h1,h2]=hue(heroItem.h);
+    const total=s.items.reduce((a,b)=>a+b.ep,0);
+    const wk=[2,1,3,0,2,4,3], wl=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map(x=>this.tr(x));
+    const week=wk.map((v,i)=>({h:Math.max(6,v/4*100)+'%',l:wl[i],c:i===6?'var(--acc)':'color-mix(in srgb,var(--acc2) 45%,transparent)'}));
+    const tally=(fn)=>{const m={};s.items.forEach(it=>fn(it).forEach(k=>{m[k]=(m[k]||0)+it.ep;}));return Object.entries(m).sort((a,b)=>b[1]-a[1]);};
+    const pal=['var(--acc)','var(--acc2)','#818CF8','#F59E0B','#F472B6'];
+    const gs=tally(it=>it.g), gt=gs.reduce((a,b)=>a+b[1],0); let acc=0;
+    const P=s.statP, ez=x=>1-Math.pow(1-x,3), lc=i=>ez(Math.max(0,Math.min(1,(P-i*0.07)/0.6)));
+    const cut=ez(Math.min(1,P))*100, segs=[]; acc=0; gs.forEach((g,i)=>{const a=acc/gt*100; acc+=g[1]; const b=acc/gt*100; if(a<cut) segs.push(pal[i%5]+' '+a+'% '+Math.min(b,cut)+'%');}); segs.push('rgba(148,163,184,.14) '+cut+'% 100%');
+    const donut='conic-gradient('+segs.join(',')+')';
+    const cs=tally(it=>[it.c]), ct=cs.reduce((a,b)=>a+b[1],0);
+    const buckets=[['≤2009',0],['2010–14',0],['2015–19',0],['2020–22',0],['2023+',0]];
+    s.items.forEach(it=>{const i=it.y<=2009?0:it.y<=2014?1:it.y<=2019?2:it.y<=2022?3:4;buckets[i][1]+=it.ep;});
+    const bm=Math.max(...buckets.map(b=>b[1]));
+    const top=[...s.items].sort((a,b)=>b.ep-a.ep).slice(0,5);
+    const recs=[{t:'Монолог фармацевта',s:'Спокойная детективная история с тёплой атмосферой, по ритму близкая к Фрирен. Подойдёт, когда хочется думать без напряжения.'},{t:'Ванпанчмен',s:'Лёгкое экшен-аниме с иронией. Тот же драйв, что в Магической битве, без тяжёлого сюжета.'},{t:'Хороший доктор',s:'Медицинская драма с человеческими историями. Продолжит линию Медведя и Шерлока.'}];
+    const recsEn=[{t:'The Apothecary Diaries',s:'A calm mystery with a warm atmosphere, close in pace to Frieren. Good when you want to think without tension.'},{t:'One-Punch Man',s:'Light action anime with irony. The same drive as Jujutsu Kaisen, without the heavy plot.'},{t:'The Good Doctor',s:'A medical drama with human stories. Continues the line of The Bear and Sherlock.'}];
+    const res=this.results();
+    const run=i=>res[i]&&res[i].run();
+    const E=s.ed, F=(l,k,type,span)=>({l,v:E?E[k]:'',type,span:span||'auto',on:this.setEd(k)});
+    const allG=['Экшен','Драма','Комедия','Фэнтези','Детектив','Романтика','Фантастика','Триллер'];
+    const ST=[["watching",this.tr("В процессе")],["planned",this.tr("В планах")],["done",this.tr("Завершено")],["dropped",this.tr("Брошено")]], pl=(on,n,go)=>({n,go,bg:on?'color-mix(in srgb,var(--acc) 18%,transparent)':'transparent',bd:on?'var(--acc)':'rgba(148,163,184,.25)',fg:on?'var(--acc)':'var(--text2)'});
+    const D=s.items.find(x=>x.id===s.detail);
+    const dt=D?{open:true,bg:bgOf(D.img,D.h),ini:D.img?'':ini(D.t),title:s.lang==='en'&&D.en?D.en:D.t,en:s.lang==='en'?(D.en?D.t:''):(D.en||''),chips:[tn(D.type),String(D.y),this.tr(D.c),...(['anime','series'].includes(D.type||'anime')?[this.tr('Сезон ')+(D.se||1)]:[]),...D.g.map(x=>this.tr(x))],desc:D.desc||this.tr('Описание не добавлено. Его можно написать в режиме редактирования.'),
+      statuses:ST.map(([k,n])=>pl(D.st===k,this.stl(k,D.type,n),()=>this.setStatus(D.id,k))),ep:D.ep,tot:D.tot,pct:Math.round(D.ep/D.tot*100)+'%',sub:D.ep>=D.tot?this.U(D.type).done:(D.type==='movie'?this.U(D.type).left:this.U(D.type).left+(D.tot-D.ep)),hasPages:D.type==='book'&&(D.pgTot||0)>0,pgTitle:this.tr('СТРАНИЦЫ'),pgVal:D.pg||0,pgTot:D.pgTot||0,pgPct:Math.round((D.pg||0)/Math.max(1,D.pgTot||1)*100)+'%',pgMinus:()=>this.setPages(D.id,-10),pgPlus:()=>this.setPages(D.id,10),
+      minus:()=>this.minus(D.id),plus:()=>this.mark(D.id),scale:s.pulse===D.id?'scale(1.2)':'scale(1)',glow:s.pulse===D.id?'0 0 28px var(--acc)':'0 0 0 var(--acc)',
+      rateTitle:this.tr('ВАША ОЦЕНКА · ')+(D.rate?D.rate+this.tr(' из 10'):this.tr('не выставлена')),rates:Array.from({length:10},(_,i)=>{const n=i+1,on=D.rate===n;return {n,go:()=>this.setRate(D.id,n),bg:on?'var(--acc)':'var(--bg)',fg:on?'var(--onacc)':'var(--text)',bd:on?'var(--acc)':'rgba(148,163,184,.18)'};}),
+      reviews:(D.rv||[]).map(r=>({...r,r:typeof r.r==='number'?'★ '+r.r:r.r})),noRv:!(D.rv||[]).length,rvText:s.rvText,setRv:e=>this.setState({rvText:e.target.value}),addRv:()=>this.addReview(D.id),
+      back:()=>this.setState({detail:null}),edit:()=>this.openEd(D)}:{open:false,chips:[],statuses:[],rates:[],reviews:[]};
+    const inl=true;
+        const ed=E?{open:true,typeLabel:this.tr('Тип'),types:TY.map(([k,n])=>pl(E.type===k,this.tr(n),()=>this.setState(st=>({ed:{...st.ed,type:k}})))),wrapBg:inl?'var(--bg)':'rgba(2,6,23,.65)',outer:inl?(()=>{}):this.closeEd,oPad:inl?'0':'16px',cMax:inl?'880px':'520px',cMargin:inl?'0 auto':'auto 0',cR:inl?'0':'24px',cPad:inl?'calc(16px + env(safe-area-inset-top)) 16px calc(40px + env(safe-area-inset-bottom))':'22px',cBg:inl?'transparent':'var(--pop)',cBd:inl?'0':'1px solid color-mix(in srgb,var(--acc) 35%,transparent)',cSh:inl?'none':'0 30px 80px rgba(0,0,0,.6)',cAnim:inl?'none':'pop .2s both',closeLabel:s.detail!==null?this.tr('← Назад к просмотру'):this.tr('← Назад'),saving:s.saving,saveLabel:s.saving?this.tr('Сохраняю…'):this.tr('Сохранить'),rates:Array.from({length:10},(_,i)=>{const n=i+1,on=E.rate===n;return {n,go:()=>this.setState(st=>({ed:{...st.ed,rate:st.ed.rate===n?0:n}})),bg:on?'var(--acc)':'var(--bg)',fg:on?'var(--onacc)':'var(--text)',bd:on?'var(--acc)':'rgba(148,163,184,.18)'};}),bg:bgOf(E.img,[210,230]),align:(isDesktop&&!inl)?'center':'flex-start',heading:E.id?this.tr('Редактировать тайтл'):this.tr('Новый тайтл'),canDelete:!!E.id,gi:E.gi,
+      fields:[F(this.tr('Название'),'t','text','1 / -1'),F(this.tr('Название (English)'),'en','text','1 / -1'),F(this.tr('Описание'),'desc','text','1 / -1'),...(['anime','series'].includes(E.type)?[F(this.tr('Сезон'),'se','number')]:[]),F(this.tr('Год выхода'),'y','number'),...(E.type==='movie'?[F(this.U('movie').w,'ep','number')]:[F(this.U(E.type).w,'ep','number'),F(this.U(E.type).t,'tot','number')]),...(E.type==='book'?[F(this.tr('Прочитано страниц'),'pg','number'),F(this.tr('Всего страниц'),'pgTot','number')]:[]),F(this.tr('Страна'),'c','text','1 / -1')],
+      genres:E.g.map(n=>({n:this.tr(n),rm:()=>this.setState(st=>({ed:{...st.ed,g:st.ed.g.filter(x=>x!==n)}}))})),
+      sugg:allG.filter(n=>!E.g.includes(n)).slice(0,6).map(n=>({n:this.tr(n),add:()=>this.addGenreVal(n)}))}:{open:false,types:[],fields:[],genres:[],sugg:[]};
+    return {
+      acc:{title:this.tr('АККАУНТ'),label:this.tr('Выйти'),user:this.tr('Вы вошли как ')+this.who(),out:()=>{try{localStorage.removeItem('episodio-user');sessionStorage.removeItem('episodio-user');}catch(e){} location.href='Login.dc.html';}},
+      chat:this.chatData(),
+      cat:this.catData(),
+      db:{title:this.tr('ДАННЫЕ'),backupTitle:this.tr('Резервная копия'),exportTitle:this.tr('Экспорт'),pick:this.pickDb,
+        info:s.savedAt?this.tr('Последняя копия: ')+new Date(s.savedAt).toLocaleString(s.lang==='en'?'en-GB':'ru-RU'):this.tr('Копия ещё не сохранялась'),
+        backup:[[this.tr('Сохранить базу данных'),this.saveDb,'var(--acc)','var(--onacc)','var(--acc)'],[this.tr('Восстановить базу данных из файла'),this.pickFile,'transparent','var(--text)','rgba(148,163,184,.3)']].map(([label,go,bg,fg,bd])=>({label,go,bg,fg,bd})),
+        exports:[[this.tr('Экспорт в Excel'),this.exportXls],[this.tr('Экспорт в TXT'),this.exportTxt],[this.tr('Экспорт в JSON'),this.exportJson]].map(([label,go])=>({label,go}))},
+      i:{k0:this.tr("ПРОДОЛЖИТЬ"),k1:this.tr("Всего серий"),k2:this.tr("Эта неделя"),k3:this.tr("Мои тайтлы"),k4:this.tr("+ Добавить тайтл"),k5:this.tr("Последняя рецензия · Атака титанов"),k6:this.tr("Финал перевернул всё, что я думал о первых сезонах. Слабоват только темп последних трёх серий."),k7:this.tr("финал"),k8:this.tr("темп"),k9:this.tr("ТЕМА"),k10:this.tr("ЯЗЫК"),k11:this.tr("Жанры"),k12:this.tr("Страны"),k13:this.tr("Годы выхода"),k14:this.tr("Топ по сериям"),k15:this.tr("Впечатление в двух словах"),k16:this.tr("ЧТО ПОСМОТРЕТЬ ДАЛЬШЕ"),k17:this.tr("Случайный период"),k18:this.tr("Нет записей за этот период"),k19:this.tr("Поделиться"),k20:this.tr("← Назад"),k21:this.tr("✎ Редактировать"),k22:this.tr("СТАТУС"),k23:this.tr("ВАШ ПРОГРЕСС"),k24:this.tr("ОТЗЫВЫ"),k25:this.tr("Отзывов пока нет"),k26:this.tr("Добавить отзыв"),k27:this.tr("Постер"),k28:this.tr("Загрузить"),k29:this.tr("Убрать"),k30:this.tr("Личный рейтинг, 1–10"),k31:this.tr("Добавить"),k32:this.tr("Удалить"),k33:this.tr("Поиск"),k34:this.tr("Меню"),k35:this.tr("Редактировать"),k36:this.tr("Отметить серию"),k37:this.tr("серия топ, но концовка слита"),k38:this.tr("Минус серия"),k39:this.tr("Плюс серия"),k40:this.tr("Ваш отзыв"),k41:this.tr("Закрыть"),k42:this.tr("Новый жанр"),k43:this.tr("JJK, Атака, Статистика…")},
+      langs:[["ru","Русский"],["en","English"]].map(([k,name])=>({name,go:()=>this.setLang(k),bd:s.lang===k?"var(--acc)":"var(--line)",on:s.lang===k?this.tr("Выбрана"):""})),
+      themes:[['dark','Nordic Twilight',this.tr('Тёмная'),'#0F172A','#1E293B','#2DD4BF'],['light','Nordic Frost',this.tr('Светлая'),'#F8FAFC','#FFFFFF','#0D9488']].map(([k,name,sub,bg,card,acc])=>({name,sub,bg,card,acc,go:()=>this.setTheme(k),bd:s.theme===k?'var(--acc)':'var(--line)',on:s.theme===k?this.tr('Выбрана'):''})),
+      typePills:[['all',this.tr('Все')],...TY.map(([k,n])=>[k,this.tr(n)])].map(([k,n])=>pl(s.tfilter===k,n,()=>this.setState({tfilter:k}))),
+      dt,statusPills:[pl(s.cfilter==='all',this.tr('Все'),()=>this.setState({cfilter:'all'})),...ST.map(([k,n])=>pl(s.cfilter===k,n,()=>this.setState({cfilter:k})))],
+      ed,pickImg:this.pickImg,clickFile:this.clickFile,rmImg:this.rmImg,closeEd:this.closeEd,saveEd:this.saveEd,delItem:this.delItem,addNew:()=>this.openEd(null),
+      setGi:e=>{const v=e.target.value;this.setState(st=>({ed:{...st.ed,gi:v}}));},
+      addGenre:()=>this.addGenreVal(E&&E.gi),giKey:e=>{if(e.key==='Enter'){e.preventDefault();this.addGenreVal(E.gi);}},
+      isDesktop,isMobile,shellDir:'column',showNav:true,menuOpen:s.menu,menuBd:s.menu?'var(--acc)':'rgba(148,163,184,.18)',toggleMenu:()=>this.setState({menu:!s.menu}),closeMenu:()=>this.setState({menu:false}),
+      menuItems:[['feed',this.tr('Лента активности')],['share',this.tr('Витрина')],['settings',this.tr('Настройки')]].map(([id,label])=>({label,go:this.go(id),color:s.tab===id?'var(--acc)':'var(--text)',bg:s.tab===id?'color-mix(in srgb,var(--acc) 12%,transparent)':'transparent'})),
+      cardW:s.tab==='home'?'150px':'100%',cardWrap:s.tab==='home'?'display:flex;gap:14px;overflow-x:auto;padding:8px 4px 12px;margin:-8px -4px 0;scroll-snap-type:x proximity':'display:grid;grid-template-columns:'+(narrow?'repeat(2,1fr)':w<1100?'repeat(3,1fr)':'repeat(6,1fr)')+';gap:14px',pad:narrow?'20px 16px':'32px 32px',padBottom:'calc(110px + env(safe-area-inset-bottom))',h1Size:narrow?'26px':'34px',
+      nav,kicker:titles[s.tab][0],title:titles[s.tab][1],openPal:this.openPal,
+      v:{settings:s.tab==='settings',catalog:s.tab==='catalog',titles:s.tab==='home'||(s.tab==='catalog'&&s.catView==='mine'),discover:s.tab==='catalog'&&s.catView==='discover',catTabs:s.tab==='catalog',home:s.tab==='home',feed:s.tab==='feed',stats:s.tab==='stats',ai:s.tab==='ai',share:s.tab==='share'},
+      bentoCols:narrow?'1fr':w<1100?'1fr 1fr':'2fr 1fr 1fr',heroSpan:narrow?'auto':w<1100?'1 / -1':'auto',
+      cardCols:narrow?'repeat(2,1fr)':w<1100?'repeat(3,1fr)':'repeat(6,1fr)',statCols:narrow?'1fr':'1fr 1fr',
+      hint:isMobile?this.tr('свайп → отметить · ← детали'):'',
+      hero:{en:s.lang==='en'?(heroItem.en?heroItem.t:''):(heroItem.en||''),bg:bgOf(heroItem.img,heroItem.h),btn:heroItem.type==='movie'?this.tr('Отметить просмотр'):this.U(heroItem.type).mark+Math.min(heroItem.ep+1,heroItem.tot),title:s.lang==='en'&&heroItem.en?heroItem.en:heroItem.t,line:(heroItem.type==='movie'?this.tr('Фильм'):this.U(heroItem.type).line+Math.min(heroItem.ep+1,heroItem.tot)+this.tr(' из ')+heroItem.tot)+' · '+heroItem.g.map(x=>this.tr(x)).join(', '),next:Math.min(heroItem.ep+1,heroItem.tot),total:heroItem.tot,genres:heroItem.g.map(x=>this.tr(x)).join(', '),pct:Math.round(heroItem.ep/heroItem.tot*100)+'%',c1:h1,c2:h2,ini:heroItem.img?'':ini(heroItem.t),mark:()=>this.mark(heroItem.id)},
+      totalEps:total,hoursLine:'≈ '+Math.round(total*24/60)+this.tr(' ч просмотра'),week,cards,feed:s.log.map(f=>({...f,day:this.tr(f.day),epl:f.u==='film'?this.tr('Фильм'):(f.u==='ch'?this.tr('Глава '):this.tr('Серия '))+f.ep})),
+      donut,genreRows:gs.map((g,i)=>({n:this.tr(g[0]),p:Math.round(g[1]/gt*100*lc(i))+'%',c:pal[i%5],o:lc(i),x:((1-lc(i))*-12)+'px'})),
+      countryRows:cs.map((c,i)=>({n:this.tr(c[0]),o:lc(i),p:Math.round(c[1]/ct*100*lc(i))+'%',w:Math.round(c[1]/cs[0][1]*100*lc(i))+'%'})),
+      yearRows:buckets.map((b,i)=>({l:b[0],h:Math.max(2,Math.round(b[1]/bm*100*lc(i)))+'%'})),
+      topRows:top.map((t,i)=>({i:i+1,n:t.t,o:lc(i),x:((1-lc(i))*16)+'px',e:Math.round(t.ep*lc(i))+this.U(t.type).short})),
+      note:s.note,setNote:e=>this.setState({note:e.target.value}),runAi:this.runAi,aiLabel:s.ai?this.tr('Анализирую…'):this.tr('Составить рецензию'),
+      review:s.review?{...s.review,show:true}:{show:false,tags:[]},
+      moods:[this.tr('Уютное'),this.tr('Динамика'),this.tr('Подумать')].map((n,i)=>({n,bg:s.mood===i?'color-mix(in srgb,var(--acc2) 20%,transparent)':'transparent',go:()=>this.setState({mood:i})})),rec:(s.lang==='en'?recsEn:recs)[s.mood],
+      sharePad:narrow?'22px':'36px',shareCols:narrow?'repeat(2,1fr)':'repeat(4,1fr)',
+      ...this.showcase(hue),
+      copyLink:()=>{try{navigator.clipboard.writeText('https://episodio.app/u/alex/top-anime-2026');}catch(e){} this.say(this.tr('Ссылка скопирована'));},
+      toast:s.toast,palOpen:s.pal,closePal:this.closePal,stop:e=>e.stopPropagation(),palTop:narrow?'12vh':'16vh',q:s.q,
+      setQ:e=>this.setState({q:e.target.value,sel:0}),
+      palKey:e=>{ if(e.key==='Enter'){run(s.sel);} else if(e.key==='ArrowDown'){e.preventDefault();this.setState({sel:Math.min(res.length-1,s.sel+1)});} else if(e.key==='ArrowUp'){e.preventDefault();this.setState({sel:Math.max(0,s.sel-1)});} },
+      results:res.map((r,i)=>({...r,bg:i===s.sel?'color-mix(in srgb,var(--acc) 14%,transparent)':'transparent'}))
+    };
+  }
+}
+</script>
+</body>
+</html>
