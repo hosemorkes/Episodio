@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 Category = Literal[
     "anime", "cartoon", "tv_series", "movie",
@@ -235,3 +235,93 @@ class EnrichApplyRequest(BaseModel):
 class EnrichApplyResponse(BaseModel):
     item: MediaItemResponse
     changed: list[str]  # какие поля были заполнены
+
+
+# --- Витрины ---
+
+SLUG_PATTERN = r"^[a-z0-9]+(-[a-z0-9]+)*$"
+
+
+class ShowcaseFilter(BaseModel):
+    """Что показывает витрина: топ по оценке среди завершённого за период (год и месяц считаются по finished_at)."""
+    title: str = Field(min_length=1, max_length=120)
+    category: Optional[Category] = None  # None = все категории
+    year: Optional[int] = Field(None, ge=1900, le=2100)  # None = за всё время
+    month: Optional[int] = Field(None, ge=1, le=12)
+    max_items: int = Field(8, ge=1, le=50)
+
+    @field_validator("title")
+    @classmethod
+    def title_not_blank(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Название не может быть пустым")
+        return value
+
+    @model_validator(mode="after")
+    def month_needs_year(self):
+        if self.month is not None and self.year is None:
+            raise ValueError("Месяц задаётся только вместе с годом")
+        return self
+
+
+class ShowcaseCreate(ShowcaseFilter):
+    slug: Optional[str] = Field(None, min_length=3, max_length=64, pattern=SLUG_PATTERN)  # не задан: строится по параметрам
+    is_public: bool = False
+
+
+class ShowcaseUpdate(BaseModel):
+    """Частичное изменение: category, year и month можно сбросить в null. Согласованность проверяет эндпоинт."""
+    title: Optional[str] = Field(None, min_length=1, max_length=120)
+    slug: Optional[str] = Field(None, min_length=3, max_length=64, pattern=SLUG_PATTERN)
+    category: Optional[Category] = None
+    year: Optional[int] = Field(None, ge=1900, le=2100)
+    month: Optional[int] = Field(None, ge=1, le=12)
+    max_items: Optional[int] = Field(None, ge=1, le=50)
+    is_public: Optional[bool] = None
+
+    @field_validator("title")
+    @classmethod
+    def title_not_blank(cls, value: Optional[str]) -> Optional[str]:
+        if value is not None:
+            value = value.strip()
+            if not value:
+                raise ValueError("Название не может быть пустым")
+        return value
+
+
+class ShowcaseResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    slug: str
+    title: str
+    category: Optional[Category] = None
+    year: Optional[int] = None
+    month: Optional[int] = None
+    max_items: int
+    is_public: bool
+    created_at: datetime
+
+
+class ShowcaseItem(BaseModel):
+    """Запись витрины, как её видят все. Поля перечислены явно: заметка, ссылка на источник, озвучка, raw и id сюда не входят."""
+    title_ru: str
+    title_original: Optional[str] = None
+    category: Category
+    release_year: Optional[int] = None
+    genres: list[str] = []
+    country: Optional[str] = None
+    author: Optional[str] = None
+    rating: int
+    poster: Optional[str] = None
+    finished_on: Optional[date] = None
+
+
+class ShowcaseView(BaseModel):
+    """Содержимое витрины: публичный ответ и предпросмотр."""
+    title: str
+    category: Optional[Category] = None
+    year: Optional[int] = None
+    month: Optional[int] = None
+    items: list[ShowcaseItem]

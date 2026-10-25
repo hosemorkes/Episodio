@@ -5,6 +5,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { api, ApiError, CATEGORY_TO_API } from "./api";
 import { translate } from "./i18n-core";
 import { fixSt, hasSeasons, isReading, parseBackup, statusPatch, unitOf } from "./rules";
+import { isPublicPath } from "./guard";
 import { weekRange } from "./stats";
 import type { CatalogItem, CatalogResult, EnrichCandidate, Lang, LogEntry, Stats, Theme, Title, TitleStatus, TitleType } from "./types";
 
@@ -558,8 +559,9 @@ export function hydrateStore(): Promise<void> {
     } catch { /* приватный режим */ }
     document.documentElement.setAttribute("lang", lang);
     useStore.setState({ theme, lang });
-    // На странице входа данных ещё нет (нет сессии): их загрузит оболочка приложения после входа
-    if (window.location.pathname !== "/login") useStore.getState().ensureLoaded();
+    // На странице входа и на публичных витринах сессии нет: библиотеку там не грузим (загрузка вернула бы 401 и перевод на вход)
+    const path = window.location.pathname;
+    if (path !== "/login" && !isPublicPath(path)) useStore.getState().ensureLoaded();
   })();
   return booting;
 }

@@ -2,18 +2,29 @@
 
 import { useEffect, useState } from "react";
 
-/** Логин текущего пользователя из сессии (GET /api/auth/me) */
-export function useMe() {
-  const [login, setLogin] = useState<string | null>(null);
+export interface Account {
+  login: string;
+  /** имя в публичных ссылках /u/<handle>/… */
+  handle: string;
+}
+
+/** Текущий пользователь из сессии (GET /api/auth/me); null, пока ответа нет или сессии нет */
+export function useAccount(): Account | null {
+  const [account, setAccount] = useState<Account | null>(null);
   useEffect(() => {
     let alive = true;
     fetch("/api/auth/me")
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => alive && setLogin(d?.login ?? null))
+      .then((d) => alive && setAccount(d?.login ? { login: d.login, handle: d.handle ?? "me" } : null))
       .catch(() => {});
     return () => {
       alive = false;
     };
   }, []);
-  return login;
+  return account;
+}
+
+/** Логин текущего пользователя из сессии */
+export function useMe() {
+  return useAccount()?.login ?? null;
 }

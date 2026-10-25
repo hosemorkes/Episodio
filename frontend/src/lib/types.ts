@@ -130,6 +130,48 @@ export interface Stats {
   marks: StatsMarks;
 }
 
+/** Витрина: публичная страница «мой топ» по фильтру (тип, год и месяц завершения, число мест) */
+export interface Showcase {
+  id: number;
+  /** адрес в ссылке /u/<handle>/<slug> */
+  slug: string;
+  title: string;
+  /** "all" — все категории */
+  type: TitleType | "all";
+  /** год завершения; null — за всё время */
+  year: number | null;
+  /** месяц завершения (только вместе с годом); null — весь год */
+  month: number | null;
+  max: number;
+  isPublic: boolean;
+}
+
+/** Параметры витрины без служебных полей: то, что редактируется и отправляется на предпросмотр */
+export type ShowcaseDraft = Pick<Showcase, "title" | "type" | "year" | "month" | "max">;
+
+/** Запись витрины: только публичные поля (заметки, ссылок и прогресса здесь нет) */
+export interface ShowcaseCard {
+  t: string;
+  en?: string;
+  type: TitleType;
+  y: number;
+  g: string[];
+  c: string;
+  author?: string;
+  rate: number;
+  img?: string;
+  /** дата завершения, YYYY-MM-DD */
+  finished?: string;
+}
+
+export interface ShowcaseView {
+  title: string;
+  type: TitleType | "all";
+  year: number | null;
+  month: number | null;
+  cards: ShowcaseCard[];
+}
+
 export type LogUnit = "ep" | "ch" | "film";
 
 export interface LogEntry {

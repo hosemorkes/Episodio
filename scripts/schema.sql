@@ -102,3 +102,19 @@ CREATE TABLE IF NOT EXISTS progress_log (
 
 CREATE INDEX IF NOT EXISTS idx_progress_log_item_logged ON progress_log (item_id, logged_at DESC);
 CREATE INDEX IF NOT EXISTS idx_progress_log_logged ON progress_log (logged_at DESC);
+
+-- Витрины: публичные страницы «мой топ» (категория, год и месяц завершения, число мест)
+CREATE TABLE IF NOT EXISTS showcases (
+    id         SERIAL PRIMARY KEY,
+    slug       VARCHAR(64) NOT NULL UNIQUE
+        CHECK (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),   -- адрес: латиница, цифры и дефисы
+    title      VARCHAR(120) NOT NULL,
+    category   VARCHAR(50)
+        CHECK (category IN ('anime','cartoon','tv_series','movie','tv_show','manga','book','audiobook')),  -- NULL = все
+    year       INTEGER CHECK (year BETWEEN 1900 AND 2100),   -- год завершения (finished_at); NULL = за всё время
+    month      INTEGER CHECK (month BETWEEN 1 AND 12),       -- месяц завершения, только вместе с годом
+    max_items  INTEGER NOT NULL DEFAULT 8 CHECK (max_items BETWEEN 1 AND 50),
+    is_public  BOOLEAN NOT NULL DEFAULT FALSE,               -- пока FALSE, публичный адрес отвечает 404
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CHECK (month IS NULL OR year IS NOT NULL)
+);

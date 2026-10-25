@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.sql import func
 
@@ -73,3 +73,19 @@ class ProgressLog(Base):
     unit = Column(String(20), nullable=False)  # episode | chapter | movie
     number = Column(Integer, nullable=False)
     logged_at = Column(DateTime, nullable=False, server_default=func.current_timestamp())
+
+
+class Showcase(Base):
+    """Таблица showcases: публичная страница «мой топ» по фильтру. Структура повторяет scripts/schema.sql."""
+
+    __tablename__ = "showcases"
+
+    id = Column(Integer, primary_key=True)
+    slug = Column(String(64), nullable=False, unique=True)
+    title = Column(String(120), nullable=False)
+    category = Column(String(50))
+    year = Column(Integer)
+    month = Column(Integer)
+    max_items = Column(Integer, nullable=False, server_default="8")
+    is_public = Column(Boolean, nullable=False, server_default="false")
+    created_at = Column(DateTime, nullable=False, server_default=func.current_timestamp())

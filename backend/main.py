@@ -13,7 +13,7 @@ from sqlalchemy import any_, func, literal, or_, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from backend import catalog, posters, progress, stats
+from backend import catalog, posters, progress, showcase, stats
 from backend.database import get_db
 from backend.enrich.base import (
     Candidate,
@@ -82,6 +82,9 @@ app = FastAPI(
     lifespan=lifespan,
     dependencies=[Depends(require_api_key)],
 )
+
+# Витрины: управление (с ключом API) и публичное чтение
+app.include_router(showcase.router)
 
 # Постеры отдаются как статика: /posters/42.jpg -> media/posters/42.jpg (путь считается от корня проекта)
 app.mount("/posters", StaticFiles(directory=posters.POSTERS_DIR, check_dir=False), name="posters")

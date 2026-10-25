@@ -18,6 +18,8 @@ describe("upstreamUrl", () => {
     expect(upstreamUrl(BASE, ["items", "from-catalog"])).toBe(`${BASE}/items/from-catalog`);
     expect(upstreamUrl(BASE, ["log"], "?limit=20&before=5")).toBe(`${BASE}/log?limit=20&before=5`);
     expect(upstreamUrl(BASE, ["stats"], "?from=2026-10-19&to=2026-10-25")).toBe(`${BASE}/stats?from=2026-10-19&to=2026-10-25`);
+    expect(upstreamUrl(BASE, ["showcases"])).toBe(`${BASE}/showcases`);
+    expect(upstreamUrl(BASE, ["showcases", "preview"])).toBe(`${BASE}/showcases/preview`);
     expect(upstreamUrl(BASE, ["posters", "42.jpg"])).toBe(`${BASE}/posters/42.jpg`);
     expect(upstreamUrl(BASE, ["health"])).toBe(`${BASE}/health`);
   });
@@ -25,7 +27,7 @@ describe("upstreamUrl", () => {
     expect(upstreamUrl(BASE, ["items"], "?status=watching")).toBe(`${BASE}/items/?status=watching`);
   });
   it("закрывает остальные пути", () => {
-    for (const p of [[], ["docs"], ["openapi.json"], ["enrich"], [""]]) expect(upstreamUrl(BASE, p)).toBeNull();
+    for (const p of [[], ["docs"], ["openapi.json"], ["enrich"], [""], ["public", "showcases", "x"]]) expect(upstreamUrl(BASE, p)).toBeNull();
   });
   it("отклоняет выход за пределы API", () => {
     expect(upstreamUrl(BASE, ["items", ".."])).toBeNull();

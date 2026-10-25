@@ -66,7 +66,7 @@ def test_engine():
 def db(test_engine):
     """Сессия к тестовой базе; перед каждым тестом таблица очищается."""
     with test_engine.begin() as conn:
-        conn.execute(text("TRUNCATE media_items, progress_log RESTART IDENTITY"))
+        conn.execute(text("TRUNCATE media_items, progress_log, showcases RESTART IDENTITY"))
     session = sessionmaker(bind=test_engine, autocommit=False, autoflush=False)()
     try:
         yield session

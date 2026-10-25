@@ -15,11 +15,16 @@ import {
   toCatalogResult,
   toEnrichCandidate,
   toLogEntry,
+  toApiShowcaseFilter,
+  toShowcase,
+  toShowcaseView,
   toStats,
   toTitle,
   typeFromApi,
   type ApiCatalogResult,
   type ApiEnrichCandidate,
+  type ApiShowcase,
+  type ApiShowcaseView,
   type ApiStats,
   type ApiItem,
 } from "./api";
@@ -211,6 +216,57 @@ describe("статистика: адаптер", () => {
   it("неизвестная категория в топе не ломает адаптер", () => {
     const s = toStats(apiStats({ top_items: [{ item_id: 1, title_ru: "X", title_original: null, category: "podcast" as ApiStats["top_items"][0]["category"], progress: 1 }] }));
     expect(s.top[0]).toMatchObject({ type: "series", en: undefined });
+  });
+});
+
+const apiShowcase = (over: Partial<ApiShowcase> = {}): ApiShowcase => ({
+  id: 3,
+  slug: "top-anime-2026-03",
+  title: "Мой топ аниме 2026, март",
+  category: "anime",
+  year: 2026,
+  month: 3,
+  max_items: 8,
+  is_public: true,
+  created_at: "2026-03-01T10:00:00",
+  ...over,
+});
+
+const apiShowcaseView = (over: Partial<ApiShowcaseView> = {}): ApiShowcaseView => ({
+  title: "Топ",
+  category: "tv_series",
+  year: 2026,
+  month: null,
+  items: [
+    { title_ru: "Медведь", title_original: "The Bear", category: "tv_series", release_year: 2022, genres: ["драма"], country: "США", author: null, rating: 10, poster: "/posters/5.jpg", finished_on: "2026-03-10" },
+    { title_ru: "Без всего", title_original: null, category: "podcast" as ApiShowcaseView["items"][0]["category"], release_year: null, genres: [], country: null, author: "А", rating: 7, poster: null, finished_on: null },
+  ],
+  ...over,
+});
+
+describe("витрины: адаптеры", () => {
+  it("toShowcase: тип интерфейса, период и публичность", () => {
+    expect(toShowcase(apiShowcase())).toEqual({ id: 3, slug: "top-anime-2026-03", title: "Мой топ аниме 2026, март", type: "anime", year: 2026, month: 3, max: 8, isPublic: true });
+    expect(toShowcase(apiShowcase({ category: null, year: null, month: null, category_x: 1 } as Partial<ApiShowcase>))).toMatchObject({ type: "all", year: null, month: null });
+    expect(toShowcase(apiShowcase({ category: "tv_series" })).type).toBe("series");
+  });
+  it("toApiShowcaseFilter: 'all' уходит как null, месяц без года сбрасывается, название обрезается", () => {
+    expect(toApiShowcaseFilter({ title: "  Топ ", type: "all", year: 2026, month: 3, max: 4 })).toEqual({ title: "Топ", category: null, year: 2026, month: 3, max_items: 4 });
+    expect(toApiShowcaseFilter({ title: "Т", type: "series", year: null, month: 5, max: 8 })).toEqual({ title: "Т", category: "tv_series", year: null, month: null, max_items: 8 });
+  });
+  it("toShowcaseView: карточки, жанры с заглавной, постер через прокси по умолчанию", () => {
+    const view = toShowcaseView(apiShowcaseView());
+    expect(view).toMatchObject({ title: "Топ", type: "series", year: 2026, month: null });
+    expect(view.cards[0]).toEqual({ t: "Медведь", en: "The Bear", type: "series", y: 2022, g: ["Драма"], c: "США", author: undefined, rate: 10, img: "/api/backend/posters/5.jpg", finished: "2026-03-10" });
+    expect(view.cards[1]).toMatchObject({ type: "series", y: 0, c: "—", author: "А", img: undefined, finished: undefined }); // неизвестная категория не ломает
+  });
+  it("toShowcaseView: адрес постера задаёт вызывающий (публичная страница)", () => {
+    const view = toShowcaseView(apiShowcaseView(), (p) => (p ? `/u/me/x${p}` : undefined));
+    expect(view.cards[0].img).toBe("/u/me/x/posters/5.jpg");
+  });
+  it("в карточке нет приватных полей", () => {
+    const keys = Object.keys(toShowcaseView(apiShowcaseView()).cards[0]);
+    for (const k of ["note", "link", "tr", "id", "ep", "tot", "desc"]) expect(keys).not.toContain(k);
   });
 });
 
@@ -611,6 +667,43 @@ describe("клиент", () => {
     expect(fn.mock.calls[0][0]).toBe("/api/backend/catalog/popular");
     stub(respond(503, { detail: "Не задан TMDB_API_KEY" }));
     await expect(api.popularCatalog("movie")).rejects.toMatchObject({ status: 503, message: "Не задан TMDB_API_KEY" });
+  });
+
+  it("витрины: список, создание, частичное изменение, удаление", async () => {
+    const fn = stub(respond(200, [apiShowcase()]));
+    expect((await api.listShowcases())[0].slug).toBe("top-anime-2026-03");
+    expect(fn.mock.calls[0][0]).toBe("/api/backend/showcases");
+
+    const post = stub(respond(201, apiShowcase({ is_public: false })));
+    const created = await api.createShowcase({ title: " Топ ", type: "anime", year: 2026, month: 3, max: 8 });
+    const [url, init] = post.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("/api/backend/showcases");
+    expect(JSON.parse(init.body as string)).toEqual({ title: "Топ", category: "anime", year: 2026, month: 3, max_items: 8, is_public: false });
+    expect(created.isPublic).toBe(false);
+
+    const patch = stub(respond(200, apiShowcase()));
+    await api.updateShowcase(3, { isPublic: true });
+    const [purl, pinit] = patch.mock.calls[0] as unknown as [string, RequestInit];
+    expect(purl).toBe("/api/backend/showcases/3");
+    expect(pinit.method).toBe("PATCH");
+    expect(JSON.parse(pinit.body as string)).toEqual({ is_public: true }); // только переданное
+    await api.updateShowcase(3, { type: "all", month: null, max: 4, title: " Н " });
+    expect(JSON.parse((patch.mock.calls[1] as unknown as [string, RequestInit])[1].body as string)).toEqual({ category: null, month: null, max_items: 4, title: "Н" });
+
+    const del = stub(respond(204));
+    await api.deleteShowcase(3);
+    expect(del.mock.calls[0][0]).toBe("/api/backend/showcases/3");
+  });
+
+  it("витрины: предпросмотр и ошибки сервера (409 занятый адрес, 422)", async () => {
+    const fn = stub(respond(200, apiShowcaseView()));
+    const view = await api.previewShowcase({ title: "Т", type: "series", year: 2026, month: null, max: 4 });
+    expect(fn.mock.calls[0][0]).toBe("/api/backend/showcases/preview");
+    expect(view.cards).toHaveLength(2);
+    stub(respond(409, { detail: "Адрес «aaa» уже занят" }));
+    await expect(api.updateShowcase(1, { slug: "aaa" })).rejects.toMatchObject({ status: 409, message: "Адрес «aaa» уже занят" });
+    stub(respond(422, { detail: "Месяц задаётся только вместе с годом" }));
+    await expect(api.createShowcase({ title: "Т", type: "all", year: 2026, month: 1, max: 8 })).rejects.toMatchObject({ status: 422 });
   });
 
   it("deleteItem принимает 204", async () => {

@@ -4,7 +4,7 @@
  * откуда запрос уходит в FastAPI вместе с X-API-Key. Компоненты сюда напрямую не обращаются.
  */
 import { hasSeasons, isReading } from "./rules";
-import type { CatalogResult, EnrichCandidate, LogEntry, LogUnit, Stats, StatsMarks, StatsRow, Title, TitleStatus, TitleType } from "./types";
+import type { CatalogResult, EnrichCandidate, LogEntry, LogUnit, Showcase, ShowcaseDraft, ShowcaseView, Stats, StatsMarks, StatsRow, Title, TitleStatus, TitleType } from "./types";
 
 // ---------- Форма данных бэкенда (backend/schemas.py) ----------
 
@@ -298,6 +298,81 @@ export function toStats(a: ApiStats): Stats {
   };
 }
 
+// ---------- Витрины ----------
+
+export interface ApiShowcase {
+  id: number;
+  slug: string;
+  title: string;
+  category: ApiCategory | null;
+  year: number | null;
+  month: number | null;
+  max_items: number;
+  is_public: boolean;
+  created_at: string;
+}
+
+export interface ApiShowcaseItem {
+  title_ru: string;
+  title_original: string | null;
+  category: ApiCategory;
+  release_year: number | null;
+  genres: string[];
+  country: string | null;
+  author: string | null;
+  rating: number;
+  poster: string | null;
+  finished_on: string | null;
+}
+
+export interface ApiShowcaseView {
+  title: string;
+  category: ApiCategory | null;
+  year: number | null;
+  month: number | null;
+  items: ApiShowcaseItem[];
+}
+
+export function toShowcase(a: ApiShowcase): Showcase {
+  return {
+    id: a.id,
+    slug: a.slug,
+    title: a.title,
+    type: a.category ? typeFromApi(a.category) : "all",
+    year: a.year,
+    month: a.month,
+    max: a.max_items,
+    isPublic: a.is_public,
+  };
+}
+
+/** Тело запроса витрины: "all" уходит как category = null */
+export function toApiShowcaseFilter(d: ShowcaseDraft) {
+  return { title: d.title.trim(), category: d.type === "all" ? null : CATEGORY_TO_API[d.type], year: d.year, month: d.year ? d.month : null, max_items: d.max };
+}
+
+/** poster превращает адрес постера из ответа в адрес для браузера: у предпросмотра это прокси, у публичной страницы — её собственный маршрут */
+export function toShowcaseView(a: ApiShowcaseView, poster: (src: string | null) => string | undefined = posterSrc): ShowcaseView {
+  return {
+    title: a.title,
+    type: a.category ? typeFromApi(a.category) : "all",
+    year: a.year,
+    month: a.month,
+    cards: a.items.map((i) => ({
+      t: i.title_ru,
+      en: i.title_original ?? undefined,
+      type: typeFromApi(i.category),
+      y: i.release_year ?? 0,
+      g: i.genres.map(capitalize),
+      c: i.country ?? "—",
+      author: i.author ?? undefined,
+      rate: i.rating,
+      img: poster(i.poster),
+      finished: i.finished_on ?? undefined,
+    })),
+  };
+}
+
 // ---------- Журнал ----------
 
 /** Подпись дня для ленты: СЕГОДНЯ, ВЧЕРА, «N ДНЯ/ДНЕЙ НАЗАД» (до недели), дальше дата «12 ОКТ» */
@@ -421,6 +496,26 @@ export const api = {
     if (opts.limit) q.set("limit", String(opts.limit));
     return toStats(await call<ApiStats>(`/stats${q.size ? `?${q}` : ""}`));
   },
+
+  listShowcases: async (): Promise<Showcase[]> => (await call<ApiShowcase[]>("/showcases")).map(toShowcase),
+  createShowcase: async (d: ShowcaseDraft, extra: { slug?: string; isPublic?: boolean } = {}): Promise<Showcase> =>
+    toShowcase(await call<ApiShowcase>("/showcases", json("POST", { ...toApiShowcaseFilter(d), slug: extra.slug, is_public: extra.isPublic ?? false }))),
+  /** Частичное изменение: передаются только перечисленные поля */
+  updateShowcase: async (id: number, patch: Partial<ShowcaseDraft> & { slug?: string; isPublic?: boolean }): Promise<Showcase> => {
+    const body: Record<string, unknown> = {};
+    if (patch.title !== undefined) body.title = patch.title.trim();
+    if (patch.type !== undefined) body.category = patch.type === "all" ? null : CATEGORY_TO_API[patch.type];
+    if (patch.year !== undefined) body.year = patch.year;
+    if (patch.month !== undefined) body.month = patch.month;
+    if (patch.max !== undefined) body.max_items = patch.max;
+    if (patch.slug !== undefined) body.slug = patch.slug;
+    if (patch.isPublic !== undefined) body.is_public = patch.isPublic;
+    return toShowcase(await call<ApiShowcase>(`/showcases/${id}`, json("PATCH", body)));
+  },
+  deleteShowcase: (id: number) => call<void>(`/showcases/${id}`, { method: "DELETE" }),
+  /** Предпросмотр по параметрам, ничего не сохраняя */
+  previewShowcase: async (d: ShowcaseDraft): Promise<ShowcaseView> =>
+    toShowcaseView(await call<ApiShowcaseView>("/showcases/preview", json("POST", toApiShowcaseFilter(d)))),
 
   /** Жанры из БД для фильтра (с заглавной буквы) */
   listGenres: async (): Promise<string[]> => (await call<string[]>("/genres")).map(capitalize),
