@@ -160,6 +160,7 @@ Episodio — личное хранилище для аниме, мультсер
 | `scripts.init_db` | Создаёт таблицы `media_items` и `progress_log`, функции и триггеры по `scripts/schema.sql` |
 | `scripts.import_json` | Загружает список из JSON в базу |
 | `scripts.enrich` | Дополняет карточки данными из TMDB, Shikimori и Open Library: постер, жанры, страна, год, автор |
+| `scripts.backup` | Резервная копия БД через `pg_dump` с ротацией |
 
 Код возврата у всех скриптов один: `0` — всё прошло без ошибок, больше нуля — были ошибки (подробности ниже).
 
@@ -206,6 +207,36 @@ python -m scripts.enrich --category anime --limit 5 --dry-run
 ```
 
 Опции: `--category`, `--limit N`, `--id N`, `--dry-run`. Коды возврата: `0` — без ошибок, `1` — были ошибки, `2` — нет ключа или TMDB его не принял. Подробнее: [Обогащение карточек](#обогащение-карточек).
+
+### `scripts.backup` — резервная копия базы
+
+Делает `pg_dump` в формате custom и кладёт файл `episodio_ГГГГММДД_ЧЧММСС.dump` в `data/backups` (папка в git не попадает). После успешной копии удаляет лишние: хранятся последние 14. Если копия не удалась, старые не трогаются. Пароль передаётся через окружение процесса и нигде не печатается.
+
+```bash
+python -m scripts.backup                  # копия в data/backups, хранить 14 последних
+python -m scripts.backup --keep 30        # хранить 30
+python -m scripts.backup --dir D:\Backups # другая папка (лучше на другом диске)
+```
+
+Опции: `--dir`, `--keep N`, `--pg-dump ПУТЬ`. `pg_dump` ищется по аргументу, переменной `PG_DUMP`, в `PATH`, затем среди установок в `C:\Program Files\PostgreSQL\*\bin` (берётся самая новая). Код возврата `0` — копия создана, `1` — ошибка.
+
+**Постеры в копию не входят.** База хранит только путь (`/posters/42.jpg`), сами файлы лежат в `media/posters/`. Загруженные вручную постеры восстановить из внешних источников нельзя, поэтому копируйте эту папку вместе с дампом.
+
+Восстановление в пустую базу:
+
+```bash
+pg_restore --no-owner --dbname episodio_db data/backups/episodio_20261025_030000.dump
+```
+
+**Запуск по расписанию (Планировщик заданий Windows).** Из PowerShell, раз в день в 03:00 (пути подставьте свои):
+
+```powershell
+$action  = New-ScheduledTaskAction -Execute "D:\ProjectsLab\Episodio\.venv\Scripts\python.exe" -Argument "-m scripts.backup" -WorkingDirectory "D:\ProjectsLab\Episodio"
+$trigger = New-ScheduledTaskTrigger -Daily -At 3:00
+Register-ScheduledTask -TaskName "Episodio backup" -Action $action -Trigger $trigger
+```
+
+Если компьютер в 03:00 выключен, включите в свойствах задачи «Запускать задачу как можно скорее после пропуска запланированного запуска». Проверить, что копии появляются, можно по папке `data/backups`.
 
 ## Импорт своего списка
 
@@ -371,6 +402,7 @@ Episodio/
 │   ├── init_db.py      # Применение schema.sql к базе
 │   ├── import_json.py  # Импорт JSON в базу
 │   ├── enrich.py       # Обогащение карточек из внешних API
+│   ├── backup.py       # Резервная копия БД (pg_dump с ротацией)
 │   └── db/             # Задел под скрипты работы с базой
 ├── tests/              # Тесты pytest
 │   ├── conftest.py     # Фикстуры: тестовая база и клиент API
@@ -379,6 +411,7 @@ Episodio/
 │   ├── test_schema_changes.py # Новые поля, триггер finished_at, таблица progress_log
 │   ├── test_progress_api.py   # Прогресс, журнал, жанры, сортировка, ключ API
 │   ├── test_catalog_api.py    # Поиск по каталогу и добавление из него (без сети)
+│   ├── test_backup.py         # Резервная копия: ротация, команда без пароля (без базы)
 │   ├── test_import.py  # Тесты импорта JSON
 │   ├── test_posters.py # Тесты постеров
 │   ├── test_enrich.py  # Тесты обогащения и TMDB (без сети)
