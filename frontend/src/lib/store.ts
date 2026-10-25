@@ -90,7 +90,7 @@ export function emptyDraft(): TitleDraft {
 export function draftOf(it: Title): TitleDraft {
   return {
     id: it.id, type: it.type, t: it.t, en: it.en ?? "", desc: it.desc ?? "", img: it.img ?? "", se: String(it.se ?? 1),
-    y: String(it.y), ep: String(it.ep), tot: String(it.tot), vol: it.vol ? String(it.vol) : "", author: it.author ?? "", tr: it.tr ?? "", link: it.link ?? "",
+    y: String(it.y), ep: String(it.ep), tot: it.tot > 0 ? String(it.tot) : "", vol: it.vol ? String(it.vol) : "", author: it.author ?? "", tr: it.tr ?? "", link: it.link ?? "",
     c: it.c, rate: it.rate ?? 0, g: [...it.g],
   };
 }
@@ -341,8 +341,9 @@ export const useStore = create<State>()(
             get().say(tr("Укажите название"));
             return null;
           }
-          const tot = e.type === "movie" ? 1 : Math.max(1, num(e.tot, 1));
-          const ep = Math.min(num(e.ep, 0), tot);
+          // tot = 0 — общее число неизвестно (идущий сериал), прогресс тогда не ограничивается сверху
+          const tot = e.type === "movie" ? 1 : num(e.tot, 0);
+          const ep = tot > 0 ? Math.min(num(e.ep, 0), tot) : num(e.ep, 0);
           const vol = isReading(e.type) ? num(e.vol, 0) : 0;
           const base = {
             type: e.type,

@@ -43,9 +43,9 @@ export default function Dashboard() {
   }
 
   // «Продолжить»: последняя тронутая карточка любого типа, до первого действия — первая недосмотренная
-  const hero = items.find((x) => x.id === lastId) ?? items.find((x) => x.ep < x.tot) ?? items[0];
+  const hero = items.find((x) => x.id === lastId) ?? items.find((x) => x.tot === 0 || x.ep < x.tot) ?? items[0];
   const hu = unitOf(hero.type, t);
-  const next = Math.min(hero.ep + 1, hero.tot);
+  const next = hero.tot > 0 ? Math.min(hero.ep + 1, hero.tot) : hero.ep + 1;
   const total = items.reduce((a, b) => a + b.ep, 0);
 
   const todayIdx = (now.getDay() + 6) % 7;
@@ -77,7 +77,7 @@ export default function Dashboard() {
             </Link>
             <div className="text-sm text-fg2">{altName(hero, lang)}</div>
             <div className="text-sm text-muted">
-              {hero.type === "movie" ? t("Фильм") : hu.line + next + t(" из ") + hero.tot} · {genreLine(hero.g, t)}
+              {hero.type === "movie" ? t("Фильм") : hu.line + next + (hero.tot > 0 ? t(" из ") + hero.tot : "")} · {genreLine(hero.g, t)}
             </div>
             <div className="h-1.5 overflow-hidden rounded-[3px] bg-slate-400/20">
               <div className="h-full bg-acc shadow-[0_0_12px_var(--acc)] transition-[width] duration-[400ms]" style={{ width: `${pct(hero.ep, hero.tot)}%` }} />

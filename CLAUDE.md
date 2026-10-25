@@ -28,7 +28,7 @@ Python 3.12+, FastAPI, SQLAlchemy 2.x, Pydantic 2, PostgreSQL 16+ (стоит л
 .venv\Scripts\Activate.ps1                  # Windows (PowerShell)
 source .venv/bin/activate                   # macOS / Linux
 python -m scripts.init_db                   # создать таблицу из scripts/schema.sql
-uvicorn backend.main:app --reload           # API, Swagger: http://127.0.0.1:8000/docs
+uvicorn backend.main:app --reload --host 127.0.0.1   # API, Swagger: http://127.0.0.1:8000/docs
 python -m scripts.import_json data/media.json --dry-run   # проверка импорта без записи
 python -m scripts.enrich --category anime --limit 5 --dry-run   # обогащение из внешних API (TMDB, Shikimori, Open Library)
 pytest                                      # тесты

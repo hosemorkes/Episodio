@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEMO_ITEMS } from "./demo-data";
-import { exportRows, fixSt, hasSeasons, isReading, metaOf, parseBackup, statusLabel, statusPatch, TYPES, TYPES_PLURAL, unitOf } from "./rules";
+import { exportRows, fixSt, hasSeasons, isReading, metaOf, parseBackup, pct, progressText, statusLabel, statusPatch, TYPES, TYPES_PLURAL, unitOf } from "./rules";
 
 const t = (s: string) => s;
 
@@ -55,6 +55,25 @@ describe("unitOf / metaOf", () => {
   it("книги и манга считаются в главах", () => expect(unitOf("manga", t).u).toBe("ch"));
   it("фильм — без счётчика серий", () => expect(unitOf("movie", t).u).toBe("film"));
   it("мета сериала содержит сезон и прогресс", () => expect(metaOf({ ...DEMO_ITEMS[0], se: 1 }, t)).toBe("С1 · 61 / 87 · 2013"));
+  it("общее число неизвестно (tot = 0): прогресс без знаменателя", () => {
+    expect(metaOf({ ...DEMO_ITEMS[0], se: 1, ep: 5, tot: 0 }, t)).toBe("С1 · 5 · 2013");
+    expect(metaOf({ ...DEMO_ITEMS[0], type: "manga", vol: undefined, ep: 40, tot: 0 }, t)).toBe("40 гл. · 2013");
+  });
+});
+
+describe("progressText / pct", () => {
+  it("«ep / tot» или просто «ep» при неизвестном общем числе", () => {
+    expect(progressText(5, 12)).toBe("5 / 12");
+    expect(progressText(5, 0)).toBe("5");
+  });
+  it("pct: проценты, а при tot = 0 шкала пустая", () => {
+    expect(pct(3, 12)).toBe(25);
+    expect(pct(5, 0)).toBe(0);
+  });
+  it("экспорт: прогресс без знаменателя при tot = 0", () => {
+    const { head, body } = exportRows([{ ...DEMO_ITEMS[0], ep: 5, tot: 0 }], t);
+    expect(body[0][head.indexOf("Прогресс")]).toBe("5");
+  });
 });
 
 describe("parseBackup", () => {

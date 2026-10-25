@@ -57,7 +57,7 @@ Episodio — личное хранилище для аниме, мультсер
 7. Запусти API:
 
    ```bash
-   uvicorn backend.main:app --reload
+   uvicorn backend.main:app --reload --host 127.0.0.1
    ```
 
 8. Открой <http://127.0.0.1:8000/docs>. Там интерактивная документация Swagger, в которой можно пробовать запросы без фронтенда.
@@ -304,7 +304,7 @@ python -m scripts.enrich --category anime --limit 5 --dry-run
 Запуск (два терминала, из корня проекта):
 
 ```bash
-uvicorn backend.main:app --reload      # API на http://127.0.0.1:8000
+uvicorn backend.main:app --reload --host 127.0.0.1   # API на http://127.0.0.1:8000
 cd frontend && npm install && npm run dev   # интерфейс на http://localhost:3000
 ```
 

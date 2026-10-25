@@ -6,7 +6,6 @@ from typing import Literal, Optional
 
 import httpx
 from fastapi import Depends, FastAPI, File, HTTPException, Query, Request, Security, UploadFile, status
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import any_, func, literal, or_, text
@@ -80,13 +79,6 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
     dependencies=[Depends(require_api_key)],
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
-    allow_methods=["*"],
-    allow_headers=["*"],
 )
 
 # Постеры отдаются как статика: /posters/42.jpg -> media/posters/42.jpg (путь считается от корня проекта)

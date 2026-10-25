@@ -6,6 +6,7 @@ import {
   CATEGORY_TO_API,
   dayLabel,
   errorMessage,
+  ITEMS_PAGE,
   posterSrc,
   STATUS_FROM_API,
   STATUS_TO_API,
@@ -14,6 +15,7 @@ import {
   toCatalogResult,
   toLogEntry,
   toTitle,
+  typeFromApi,
   type ApiCatalogResult,
   type ApiItem,
 } from "./api";
@@ -111,6 +113,22 @@ describe("toTitle", () => {
   });
   it("цвет заглушки зависит только от id", () => {
     expect(toTitle(apiItem({ id: 3 })).h).toEqual(toTitle(apiItem({ id: 3, title_ru: "Другое" })).h);
+  });
+});
+
+describe("неизвестная категория", () => {
+  it("typeFromApi: известные совпадают с таблицей, неизвестная — запасной тип «сериал»", () => {
+    expect(typeFromApi("tv_show")).toBe("show");
+    expect(typeFromApi("podcast")).toBe("series");
+    expect(typeFromApi("")).toBe("series");
+  });
+  it("toTitle не падает и считает прогресс сериями", () => {
+    const t = toTitle(apiItem({ category: "podcast" as ApiItem["category"], current_episode: 3, total_episodes: 10 }));
+    expect(t).toMatchObject({ type: "series", ep: 3, tot: 10 });
+  });
+  it("toCatalogResult не падает на неизвестной категории", () => {
+    const r = toCatalogResult(apiResult({ category: "podcast" as ApiCatalogResult["category"] }));
+    expect(r.type).toBe("series");
   });
 });
 
@@ -291,8 +309,46 @@ describe("клиент", () => {
   it("listItems запрашивает список и преобразует записи", async () => {
     const fn = stub(respond(200, [apiItem()]));
     const items = await api.listItems();
-    expect(fn).toHaveBeenCalledWith("/api/backend/items/?limit=500", undefined);
+    expect(fn).toHaveBeenCalledTimes(1);
+    expect(fn.mock.calls[0][0]).toBe(`/api/backend/items/?limit=${ITEMS_PAGE}&offset=0`);
     expect(items[0]).toMatchObject({ id: 7, type: "series" });
+  });
+
+  it("listItems читает страницами до неполной и не теряет записи сверх одной страницы", async () => {
+    const full = Array.from({ length: ITEMS_PAGE }, (_, i) => apiItem({ id: i + 1 }));
+    const tail = [apiItem({ id: ITEMS_PAGE + 1 }), apiItem({ id: ITEMS_PAGE + 2 })];
+    const fn = vi.fn(async (url: string) => new Response(JSON.stringify(url.endsWith("offset=0") ? full : tail), { status: 200 }));
+    vi.stubGlobal("fetch", fn);
+    const items = await api.listItems();
+    expect(items).toHaveLength(ITEMS_PAGE + 2);
+    expect(fn.mock.calls.map((c) => c[0])).toEqual([
+      `/api/backend/items/?limit=${ITEMS_PAGE}&offset=0`,
+      `/api/backend/items/?limit=${ITEMS_PAGE}&offset=${ITEMS_PAGE}`,
+    ]);
+  });
+
+  it("listItems: точно целое число страниц — последний пустой запрос завершает чтение", async () => {
+    const full = Array.from({ length: ITEMS_PAGE }, (_, i) => apiItem({ id: i + 1 }));
+    const fn = vi.fn(async (url: string) => new Response(JSON.stringify(url.endsWith("offset=0") ? full : []), { status: 200 }));
+    vi.stubGlobal("fetch", fn);
+    expect(await api.listItems()).toHaveLength(ITEMS_PAGE);
+    expect(fn).toHaveBeenCalledTimes(2);
+  });
+
+  it("запрос получает сигнал таймаута: 15 с обычный, 60 с для загрузки файла", async () => {
+    const spy = vi.spyOn(AbortSignal, "timeout");
+    stub(respond(200, apiItem()));
+    await api.getItem(7);
+    await api.uploadPoster(7, new File(["x"], "p.png", { type: "image/png" }));
+    expect(spy.mock.calls.map((c) => c[0])).toEqual([15_000, 60_000]);
+    spy.mockRestore();
+  });
+
+  it("зависший сервер: ApiError 0 с сообщением про ожидание", async () => {
+    stub(new DOMException("The operation timed out.", "TimeoutError"));
+    const err = await api.getItem(7).catch((e) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect(err).toMatchObject({ status: 0, message: "Сервер не ответил вовремя" });
   });
 
   it("createItem отправляет POST с полями бэкенда", async () => {

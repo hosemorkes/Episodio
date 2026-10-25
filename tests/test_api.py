@@ -155,6 +155,17 @@ def test_delete_missing_returns_404(client):
     assert client.delete("/items/999").status_code == 404
 
 
+def test_no_cors_headers(client):
+    """Браузер ходит только через прокси Next.js, поэтому API не разрешает кросс-доменные запросы."""
+    response = client.get("/health", headers={"Origin": "http://localhost:3000"})
+    assert "access-control-allow-origin" not in response.headers
+    preflight = client.options(
+        "/items/",
+        headers={"Origin": "http://localhost:3000", "Access-Control-Request-Method": "POST"},
+    )
+    assert "access-control-allow-origin" not in preflight.headers
+
+
 def test_health_ok(client):
     response = client.get("/health")
     assert response.status_code == 200

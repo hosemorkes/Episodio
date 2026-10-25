@@ -40,8 +40,9 @@ function validate(d: TitleDraft, t: (s: string) => string) {
   if (n(d.y) < 0 || Number.isNaN(n(d.y))) errors.y = neg;
   if (n(d.ep) < 0 || Number.isNaN(n(d.ep))) errors.ep = neg;
   if (d.type !== "movie") {
-    if (n(d.tot) < 1 || Number.isNaN(n(d.tot))) errors.tot = t("Всего не меньше 1");
-    else if (!errors.ep && n(d.ep) > n(d.tot)) errors.ep = t("Больше, чем всего");
+    // Пустое «Всего» допустимо: число серий идущего сериала неизвестно
+    if (d.tot.trim() !== "" && (n(d.tot) < 1 || Number.isNaN(n(d.tot)))) errors.tot = t("Всего не меньше 1");
+    else if (!errors.ep && n(d.tot) > 0 && n(d.ep) > n(d.tot)) errors.ep = t("Больше, чем всего");
   }
   if (hasSeasons(d.type) && (n(d.se) < 0 || Number.isNaN(n(d.se)))) errors.se = neg;
   if (isReading(d.type) && (n(d.vol) < 0 || Number.isNaN(n(d.vol)))) errors.vol = neg;

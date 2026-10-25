@@ -72,6 +72,9 @@ export const CATEGORY_TO_API: Record<TitleType, ApiCategory> = {
 
 export const CATEGORY_FROM_API = Object.fromEntries(Object.entries(CATEGORY_TO_API).map(([k, v]) => [v, k])) as Record<ApiCategory, TitleType>;
 
+/** Тип интерфейса для категории из БД; неизвестная (новая на сервере) считается сериалом, чтобы запись осталась видимой */
+export const typeFromApi = (category: string): TitleType => (CATEGORY_FROM_API as Record<string, TitleType | undefined>)[category] ?? "series";
+
 export const STATUS_TO_API: Record<TitleStatus, ApiStatus> = {
   watching: "watching",
   planned: "planned",
@@ -106,7 +109,7 @@ export function hueOf(id: number): [number, number] {
 // ---------- БД -> интерфейс ----------
 
 export function toTitle(a: ApiItem): Title {
-  const type = CATEGORY_FROM_API[a.category];
+  const type = typeFromApi(a.category);
   const kind = kindOf(type);
   const st = STATUS_FROM_API[a.status];
   // Фильм: в БД прогресса нет, счётчик 0/1 строится по статусу
@@ -198,7 +201,7 @@ export function toCatalogResult(a: ApiCatalogResult): CatalogResult {
     key: `${a.source}:${a.external_id}:${a.category}`,
     source: a.source,
     extId: a.external_id,
-    type: CATEGORY_FROM_API[a.category],
+    type: typeFromApi(a.category),
     t: a.title,
     en: a.original_title ?? undefined,
     y: a.year ?? 0,
@@ -278,11 +281,19 @@ export function errorMessage(body: unknown, status: number): string {
   return `Ошибка сервера (${status})`;
 }
 
-async function call<T>(path: string, init?: RequestInit): Promise<T> {
+/** Сколько ждём ответ: обычный запрос и загрузка файла */
+const TIMEOUT_MS = 15_000;
+const UPLOAD_TIMEOUT_MS = 60_000;
+
+/** Записей за один запрос при загрузке библиотеки (максимум бэкенда — 500) */
+export const ITEMS_PAGE = 200;
+
+async function call<T>(path: string, init?: RequestInit, timeoutMs = TIMEOUT_MS): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(BASE + path, init);
-  } catch {
+    res = await fetch(BASE + path, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+  } catch (e) {
+    if (e instanceof Error && e.name === "TimeoutError") throw new ApiError(0, "Сервер не ответил вовремя");
     throw new ApiError(0, "Нет связи с сервером");
   }
   if (res.status === 204) return undefined as T;
@@ -298,8 +309,16 @@ const json = (method: string, body: unknown): RequestInit => ({
 });
 
 export const api = {
-  /** Вся библиотека, свежеобновлённые первыми */
-  listItems: async (): Promise<Title[]> => (await call<ApiItem[]>("/items/?limit=500")).map(toTitle),
+  /** Вся библиотека, свежеобновлённые первыми: читается страницами, пока не придёт неполная */
+  listItems: async (): Promise<Title[]> => {
+    const all: ApiItem[] = [];
+    for (let offset = 0; ; offset += ITEMS_PAGE) {
+      const page = await call<ApiItem[]>(`/items/?limit=${ITEMS_PAGE}&offset=${offset}`);
+      all.push(...page);
+      if (page.length < ITEMS_PAGE) break;
+    }
+    return all.map(toTitle);
+  },
   getItem: async (id: number): Promise<Title> => toTitle(await call<ApiItem>(`/items/${id}`)),
   createItem: async (it: Omit<Title, "id" | "h">): Promise<Title> => toTitle(await call<ApiItem>("/items/", json("POST", toApiFields(it)))),
   updateItem: async (id: number, it: Omit<Title, "id" | "h">): Promise<Title> => toTitle(await call<ApiItem>(`/items/${id}`, json("PATCH", toApiFields(it)))),
@@ -340,7 +359,7 @@ export const api = {
   uploadPoster: async (id: number, file: File): Promise<Title> => {
     const form = new FormData();
     form.append("file", file);
-    return toTitle(await call<ApiItem>(`/items/${id}/poster`, { method: "POST", body: form }));
+    return toTitle(await call<ApiItem>(`/items/${id}/poster`, { method: "POST", body: form }, UPLOAD_TIMEOUT_MS));
   },
   deletePoster: async (id: number): Promise<Title> => toTitle(await call<ApiItem>(`/items/${id}/poster`, { method: "DELETE" })),
 };

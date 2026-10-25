@@ -56,10 +56,13 @@ export function unitOf(type: TitleType, t: Tr) {
   return { u: "ep" as const, mark: t("Отметить серию "), line: t("Серия "), left: t("Осталось серий: "), done: t("Все серии просмотрены"), w: t("Просмотрено серий"), t: t("Всего серий"), short: t(" сер."), toast: t(" · серия ") };
 }
 
+/** «5 / 12», а если общее число неизвестно (tot = 0, идущий сериал) — просто «5» */
+export const progressText = (ep: number, tot: number) => (tot > 0 ? `${ep} / ${tot}` : String(ep));
+
 export function metaOf(it: Title, t: Tr): string {
   if (it.type === "movie") return `${it.y} · ${t(it.ep >= it.tot ? "Фильм просмотрен" : "Не просмотрен")}`;
-  if (isReading(it.type)) return `${it.vol ? `${t("Т")}${it.vol} · ` : ""}${it.ep} / ${it.tot}${t(" гл.")} · ${it.y}`;
-  return `${t("С")}${it.se ?? 1} · ${it.ep} / ${it.tot} · ${it.y}`;
+  if (isReading(it.type)) return `${it.vol ? `${t("Т")}${it.vol} · ` : ""}${progressText(it.ep, it.tot)}${t(" гл.")} · ${it.y}`;
+  return `${t("С")}${it.se ?? 1} · ${progressText(it.ep, it.tot)} · ${it.y}`;
 }
 
 export function statusLabel(k: TitleStatus, type: TitleType, t: Tr, fallback: string) {
@@ -106,7 +109,8 @@ export const findMine = (items: Title[], c: { t: string; type: TitleType }) => i
 
 export const genreLine = (g: string[], t: Tr) => g.map(t).join(", ");
 
-export const pct = (a: number, b: number) => Math.round((a / Math.max(1, b)) * 100);
+/** Процент выполнения; при неизвестном общем числе (b = 0) шкала пустая */
+export const pct = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 100) : 0);
 
 export function genreCounts(items: Title[]) {
   const uc: Record<string, number> = {};
@@ -148,7 +152,7 @@ export function exportRows(items: Title[], t: Tr) {
     x.g.map(t).join(", "),
     hasSeasons(x.type) ? (x.se ?? 1) : "",
     isReading(x.type) ? (x.vol ?? "") : "",
-    `${x.ep} / ${x.tot}`,
+    progressText(x.ep, x.tot),
     x.rate || "",
     x.author ?? "",
     x.tr ?? "",

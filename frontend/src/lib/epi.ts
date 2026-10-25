@@ -1,5 +1,5 @@
 import { CATALOG } from "./catalog-data";
-import { findMine, recommend, type Tr } from "./rules";
+import { findMine, progressText, recommend, type Tr } from "./rules";
 import type { CatalogItem, Lang, Title } from "./types";
 
 export type EpiAction = { label: string; kind: "plan"; catId: number } | { label: string; kind: "mark"; id: number };
@@ -46,7 +46,7 @@ export function epiReply(text: string, items: Title[], lang: Lang, t: Tr, catalo
       ? `${t("Выходит сейчас из ваших тайтлов:")}\n${air
           .map((c) => {
             const m = findMine(items, c)!;
-            return `• ${nm(m)}${t(" — выходит, ваш прогресс ")}${m.ep} / ${m.tot}`;
+            return `• ${nm(m)}${t(" — выходит, ваш прогресс ")}${progressText(m.ep, m.tot)}`;
           })
           .join("\n")}`
       : t("По вашим тайтлам пока тишина, новых серий нет.");

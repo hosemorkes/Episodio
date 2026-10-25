@@ -17,7 +17,7 @@ vi.mock("./api", async (importOriginal) => {
 });
 
 import { api, ApiError } from "./api";
-import { emptyDraft, useStore } from "./store";
+import { draftOf, emptyDraft, useStore } from "./store";
 import type { LogEntry, Title } from "./types";
 
 const m = vi.mocked(api);
@@ -307,6 +307,18 @@ describe("saveTitle", () => {
     m.createItem.mockResolvedValue(title({ id: 5 }));
     await state().saveTitle(draft({ ep: "3" }));
     expect(m.createItem.mock.calls[0][0]).toMatchObject({ st: "watching", ep: 3 });
+  });
+
+  it("пустое «Всего»: идущий сериал сохраняется с tot = 0, прогресс не обрезается", async () => {
+    reset([]);
+    m.createItem.mockResolvedValue(title({ id: 5, tot: 0 }));
+    await state().saveTitle(draft({ ep: "15", tot: "" }));
+    expect(m.createItem.mock.calls[0][0]).toMatchObject({ st: "watching", ep: 15, tot: 0 });
+  });
+
+  it("форма редактирования: неизвестное «Всего» показывается пустым, а не «0»", () => {
+    expect(draftOf(title({ tot: 0 })).tot).toBe("");
+    expect(draftOf(title({ tot: 8 })).tot).toBe("8");
   });
 
   it("фильм: всего 1", async () => {
