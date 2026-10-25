@@ -426,17 +426,19 @@ export const api = {
   listGenres: async (): Promise<string[]> => (await call<string[]>("/genres")).map(capitalize),
 
   /** Живой поиск по внешним каталогам; без type ищет по основным категориям. errors — недоступные источники */
-  searchCatalog: async (q: string, type?: TitleType, limit?: number): Promise<{ results: CatalogResult[]; errors: string[] }> => {
+  searchCatalog: async (q: string, type?: TitleType, limit?: number, source?: string): Promise<{ results: CatalogResult[]; errors: string[] }> => {
     const params = new URLSearchParams({ q });
     if (type) params.set("category", CATEGORY_TO_API[type]);
+    if (source) params.set("source", source);
     if (limit) params.set("limit", String(limit));
     const r = await call<ApiCatalogSearch>(`/catalog/search?${params}`);
     return { results: r.results.map(toCatalogResult), errors: r.errors };
   },
   /** Популярное для полок «Обзора»; без type — по основным категориям. errors — недоступные источники */
-  popularCatalog: async (type?: TitleType, limit?: number): Promise<{ results: CatalogResult[]; errors: string[] }> => {
+  popularCatalog: async (type?: TitleType, limit?: number, source?: string): Promise<{ results: CatalogResult[]; errors: string[] }> => {
     const params = new URLSearchParams();
     if (type) params.set("category", CATEGORY_TO_API[type]);
+    if (source) params.set("source", source);
     if (limit) params.set("limit", String(limit));
     const r = await call<ApiCatalogSearch>(`/catalog/popular${params.size ? `?${params}` : ""}`, undefined, ENRICH_TIMEOUT_MS);
     return { results: r.results.map(toCatalogResult), errors: r.errors };
@@ -446,8 +448,8 @@ export const api = {
     toTitle(await call<ApiItem>("/items/from-catalog", json("POST", toApiCatalogAdd(r, st)))),
 
   /** Варианты из внешнего источника для карточки; ничего не сохраняет */
-  listCandidates: async (id: number): Promise<EnrichCandidate[]> =>
-    (await call<ApiEnrichCandidate[]>(`/items/${id}/enrich/candidates`, undefined, ENRICH_TIMEOUT_MS)).map(toEnrichCandidate),
+  listCandidates: async (id: number, source?: string): Promise<EnrichCandidate[]> =>
+    (await call<ApiEnrichCandidate[]>(`/items/${id}/enrich/candidates${source ? `?source=${encodeURIComponent(source)}` : ""}`, undefined, ENRICH_TIMEOUT_MS)).map(toEnrichCandidate),
   /** Применяет вариант: заполняются пустые поля; force заменяет ещё и постер. changed — заполненные поля БД */
   applyCandidate: async (id: number, source: string, externalId: string, force = false): Promise<{ item: Title; changed: string[] }> => {
     const r = await call<ApiEnrichApply>(

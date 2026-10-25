@@ -29,24 +29,25 @@ const cache = createTtlCache<Loaded>(10 * 60_000);
  * Живая подборка для полок «Обзора» (GET /catalog/popular) по выбранному типу.
  * Устаревшие ответы (вкладка уже сменилась) отбрасываются; при ошибке страница показывает статическую подборку.
  */
-export function useCatalogPopular(type: TitleType | "all", enabled: boolean): PopularState {
+export function useCatalogPopular(type: TitleType | "all", enabled: boolean, source?: string): PopularState {
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<Omit<PopularState, "retry"> & { key: string }>({ key: "", status: "idle", results: [], warnings: [], error: null });
   const retry = useCallback(() => {
     cache.clear();
     setAttempt((n) => n + 1);
   }, []);
-  const key = `${type}:${attempt}`;
-  const cached = enabled ? cache.get(type) : undefined;
+  const key = `${type}:${source ?? ""}:${attempt}`;
+  const cacheKey = `${type}:${source ?? ""}`;
+  const cached = enabled ? cache.get(cacheKey) : undefined;
 
   useEffect(() => {
-    if (!enabled || cache.get(type)) return;
+    if (!enabled || cache.get(cacheKey)) return;
     let stale = false;
     setState({ key, status: "loading", results: [], warnings: [], error: null });
     api
-      .popularCatalog(type === "all" ? undefined : type, SHELF_SIZE)
+      .popularCatalog(type === "all" ? undefined : type, SHELF_SIZE, source)
       .then((r) => {
-        cache.set(type, { results: r.results, warnings: r.errors });
+        cache.set(cacheKey, { results: r.results, warnings: r.errors });
         if (!stale) setState({ key, status: "ready", results: r.results, warnings: r.errors, error: null });
       })
       .catch((e) => {
@@ -55,7 +56,7 @@ export function useCatalogPopular(type: TitleType | "all", enabled: boolean): Po
     return () => {
       stale = true;
     };
-  }, [enabled, type, key]);
+  }, [enabled, type, key, source, cacheKey]);
 
   if (!enabled) return { status: "idle", results: [], warnings: [], error: null, retry };
   if (cached) return { status: "ready", ...cached, error: null, retry };

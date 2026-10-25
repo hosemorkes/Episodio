@@ -72,7 +72,7 @@ interface State {
   addFromCatalog: (c: CatalogItem, st: TitleStatus) => Promise<void>;
   addFromSearch: (r: CatalogResult, st: TitleStatus) => Promise<boolean>;
   /** Варианты обогащения из внешнего источника; ошибки бросаются наверх, окно показывает их само */
-  enrichCandidates: (id: number) => Promise<EnrichCandidate[]>;
+  enrichCandidates: (id: number, source?: string) => Promise<EnrichCandidate[]>;
   /** Применяет вариант к карточке и обновляет её в библиотеке; возвращает заполненные поля БД */
   enrichApply: (id: number, c: EnrichCandidate, replacePoster: boolean) => Promise<string[]>;
   restore: (data: unknown) => Promise<boolean>;
@@ -461,9 +461,9 @@ export const useStore = create<State>()(
             return false;
           }
         },
-        enrichCandidates: async (id) => {
+        enrichCandidates: async (id, source) => {
           try {
-            return await api.listCandidates(id);
+            return await api.listCandidates(id, source);
           } catch (e) {
             if (e instanceof ApiError && e.status === 401) fail(e);
             throw e;

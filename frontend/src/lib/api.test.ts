@@ -591,6 +591,20 @@ describe("клиент", () => {
     expect(r.errors).toEqual(["TMDB недоступен"]);
   });
 
+  it("источник уходит в запросы: поиск, подборка и варианты обогащения", async () => {
+    const fn = stub(respond(200, { results: [], errors: [] }));
+    await api.searchCatalog("Фрирен", "anime", 5, "anilist");
+    expect(fn.mock.calls[0][0]).toBe("/api/backend/catalog/search?q=%D0%A4%D1%80%D0%B8%D1%80%D0%B5%D0%BD&category=anime&source=anilist&limit=5");
+    await api.popularCatalog("manga", 12, "anilist");
+    expect(fn.mock.calls[1][0]).toBe("/api/backend/catalog/popular?category=manga&source=anilist&limit=12");
+    stub(respond(200, []));
+    const cfn = stub(respond(200, []));
+    await api.listCandidates(7, "anilist");
+    expect(cfn.mock.calls[0][0]).toBe("/api/backend/items/7/enrich/candidates?source=anilist");
+    await api.listCandidates(7);
+    expect(cfn.mock.calls[1][0]).toBe("/api/backend/items/7/enrich/candidates");
+  });
+
   it("popularCatalog без типа не шлёт category; 503 приходит с текстом сервера", async () => {
     const fn = stub(respond(200, { results: [], errors: [] }));
     await api.popularCatalog();

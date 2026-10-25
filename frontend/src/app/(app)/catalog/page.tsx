@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { TitleCard } from "@/components/TitleCard";
 import { GhostButton, Pill, Pills, PrimaryButton, Skeleton } from "@/components/ui";
 import { CATALOG } from "@/lib/catalog-data";
-import { needsReview } from "@/lib/enrich";
+import { needsReview, sourceName, sourcesFor } from "@/lib/enrich";
 import { useLang, useT } from "@/lib/i18n";
 import { buildShelves, filterLive, sortLive, topGenres, YEAR_OK, type Sort, type YearFilter } from "@/lib/shelves";
 import { useCatalogPopular } from "@/lib/useCatalogPopular";
@@ -42,9 +42,13 @@ export default function CatalogPage() {
   const [cfilter, setCfilter] = useState<"all" | TitleStatus>("all");
   const [menu, setMenu] = useState<string | null>(null);
 
-  const live = useCatalogSearch(cq, tfilter, view === "discover");
+  // У аниме и манги два источника (Shikimori по умолчанию и AniList): поиск и подборка идут в выбранный
+  const [src, setSrc] = useState<string | undefined>(undefined);
+  const sourceList = tfilter === "all" ? [] : sourcesFor(tfilter);
+  const source = sourceList.length > 1 && src && sourceList.includes(src) ? src : undefined;
+  const live = useCatalogSearch(cq, tfilter, view === "discover", source);
   // Живая подборка для полок; пока её нет (загрузка, ошибка) показываем статическую
-  const pop = useCatalogPopular(tfilter, view === "discover");
+  const pop = useCatalogPopular(tfilter, view === "discover", source);
   const liveOk = pop.status === "ready" && pop.results.length > 0;
   const q = cq.trim().toLowerCase();
   const nm = (c: CatalogItem) => (lang === "en" ? c.en : c.t);
@@ -208,6 +212,16 @@ export default function CatalogPage() {
           </AnimatePresence>
 
           <Pills items={typeTabs} value={tfilter} onChange={setTfilter} h={44} />
+          {sourceList.length > 1 && (
+            <div className="flex items-center gap-2 overflow-x-auto" role="group" aria-label={t("Источник")}>
+              <span className="text-xs text-muted">{t("Источник")}</span>
+              {sourceList.map((s) => (
+                <Pill key={s} h={36} on={(source ?? sourceList[0]) === s} onClick={() => setSrc(s)}>
+                  {sourceName(s)}
+                </Pill>
+              ))}
+            </div>
+          )}
           {menu && <div className="fixed inset-0 z-[4]" onClick={() => setMenu(null)} />}
 
           {!active && pop.status === "loading" ? (

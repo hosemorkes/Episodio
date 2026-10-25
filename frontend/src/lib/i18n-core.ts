@@ -40,6 +40,7 @@ const EXTRA: Record<string, string> = {
   // Живой поиск по каталогам
   "Найдено в каталогах": "Found in catalogs",
   "В подборке: ": "In the selection: ",
+  "Источник": "Source",
   "Ищем в каталогах…": "Searching catalogs…",
   "В каталогах ничего не найдено": "Nothing found in catalogs",
   "Часть источников недоступна: ": "Some sources are unavailable: ",

@@ -72,11 +72,18 @@ class HttpFetcher:
         self._sleep = sleep
 
     def get(self, url: str, params: Optional[dict] = None, headers: Optional[dict] = None) -> httpx.Response:
+        return self._request("GET", url, params=params, headers=headers)
+
+    def post(self, url: str, json: Optional[dict] = None, headers: Optional[dict] = None) -> httpx.Response:
+        """POST с JSON-телом (GraphQL AniList) с теми же паузами и повторами, что у GET."""
+        return self._request("POST", url, json=json, headers=headers)
+
+    def _request(self, method: str, url: str, **kwargs) -> httpx.Response:
         for attempt in range(self._max_retries + 1):
             last_attempt = attempt == self._max_retries
             self._limiter.wait()
             try:
-                response = self._client.get(url, params=params, headers=headers)
+                response = self._client.request(method, url, **kwargs)
             except httpx.TransportError:
                 if last_attempt:
                     raise

@@ -2,12 +2,12 @@
 
 import { motion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { changedText, enrichErrorInfo, sourceName } from "@/lib/enrich";
+import { changedText, enrichErrorInfo, sourceName, sourcesFor } from "@/lib/enrich";
 import { useLang, useT } from "@/lib/i18n";
 import { displayName, posterBg } from "@/lib/rules";
 import { useStore } from "@/lib/store";
 import type { EnrichCandidate } from "@/lib/types";
-import { GhostButton, PrimaryButton, Skeleton, Spinner } from "./ui";
+import { GhostButton, Pill, PrimaryButton, Skeleton, Spinner } from "./ui";
 
 type Failure = { message: string; retry: boolean; reload: boolean; stage: "load" | "apply" };
 
@@ -21,6 +21,10 @@ export function EnrichModal({ id, onClose }: { id: number; onClose: () => void }
   const [failure, setFailure] = useState<Failure | null>(null);
   const [applying, setApplying] = useState<EnrichCandidate | null>(null);
   const [replacePoster, setReplacePoster] = useState(false);
+  // Источник по умолчанию — первый; выбор показывается, только если у типа их несколько (аниме и манга)
+  const sources = it ? sourcesFor(it.type) : [];
+  const [source, setSource] = useState<string | undefined>(undefined);
+  const activeSource = source ?? sources[0];
   const dialogRef = useRef<HTMLDivElement>(null);
   const alive = useRef(true);
   const lastTried = useRef<EnrichCandidate | null>(null);
@@ -29,12 +33,12 @@ export function EnrichModal({ id, onClose }: { id: number; onClose: () => void }
     setList(null);
     setFailure(null);
     try {
-      const found = await enrichCandidates(id);
+      const found = await enrichCandidates(id, activeSource);
       if (alive.current) setList(found);
     } catch (e) {
       if (alive.current) setFailure({ ...enrichErrorInfo(e), stage: "load" });
     }
-  }, [enrichCandidates, id]);
+  }, [enrichCandidates, id, activeSource]);
 
   useEffect(() => {
     alive.current = true;
@@ -101,6 +105,17 @@ export function EnrichModal({ id, onClose }: { id: number; onClose: () => void }
             ✕
           </GhostButton>
         </div>
+
+        {sources.length > 1 && (
+          <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t("Источник")}>
+            <span className="text-xs text-muted">{t("Источник")}</span>
+            {sources.map((s) => (
+              <Pill key={s} h={36} on={activeSource === s} disabled={!!applying} onClick={() => setSource(s)}>
+                {sourceName(s)}
+              </Pill>
+            ))}
+          </div>
+        )}
 
         {it.img && (
           <label className="flex min-h-11 items-center gap-2.5 text-sm">

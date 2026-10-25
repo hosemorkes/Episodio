@@ -179,7 +179,7 @@ export function SearchHero({ r, index, menuKey, openMenu, setOpenMenu }: { r: Ca
 }
 
 /** Названия источников для бейджа на карточке результата поиска */
-const SOURCE_LABEL: Record<string, string> = { tmdb: "TMDB", shikimori: "Shikimori", openlibrary: "Open Library" };
+const SOURCE_LABEL: Record<string, string> = { tmdb: "TMDB", shikimori: "Shikimori", anilist: "AniList", openlibrary: "Open Library" };
 
 /** Оттенок заглушки из строки: у результата поиска нет числового id */
 const hueOfKey = (key: string) => [...key].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) % 360, 7);

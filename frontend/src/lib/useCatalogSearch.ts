@@ -25,7 +25,7 @@ const DEBOUNCE_MS = 600;
  * Живой поиск по внешним каталогам с задержкой, чтобы не искать на каждую букву.
  * Устаревшие ответы (запрос уже изменился) отбрасываются.
  */
-export function useCatalogSearch(query: string, type: TitleType | "all", enabled: boolean): CatalogSearchState {
+export function useCatalogSearch(query: string, type: TitleType | "all", enabled: boolean, source?: string): CatalogSearchState {
   const [state, setState] = useState<CatalogSearchState>(IDLE);
   const term = query.trim();
   const on = enabled && term.length >= MIN_QUERY;
@@ -39,7 +39,7 @@ export function useCatalogSearch(query: string, type: TitleType | "all", enabled
     setState((s) => ({ ...s, active: true, busy: true, error: null }));
     const timer = setTimeout(async () => {
       try {
-        const r = await api.searchCatalog(term, type === "all" ? undefined : type);
+        const r = await api.searchCatalog(term, type === "all" ? undefined : type, undefined, source);
         if (!stale) setState({ active: true, busy: false, results: r.results, warnings: r.errors, error: null });
       } catch (e) {
         if (!stale) setState({ active: true, busy: false, results: [], warnings: [], error: e instanceof ApiError ? e.message : "Не удалось выполнить поиск" });
@@ -49,7 +49,7 @@ export function useCatalogSearch(query: string, type: TitleType | "all", enabled
       stale = true;
       clearTimeout(timer);
     };
-  }, [on, term, type]);
+  }, [on, term, type, source]);
 
   // В первом кадре после ввода состояние ещё не обновилось: сразу показываем «ищем», без вспышки пустого экрана
   return on ? (state.active ? state : { ...IDLE, active: true, busy: true }) : IDLE;

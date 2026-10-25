@@ -60,7 +60,7 @@ class FakeEnricher:
         self.downloads = []
         self._download = download or (lambda url: (PNG, "image/png"))
 
-    def provider_for(self, category):
+    def provider_for(self, category, source=None):
         if self.error:
             raise self.error
         return self.provider

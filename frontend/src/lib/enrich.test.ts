@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ApiError } from "./api";
-import { changedText, enrichErrorInfo, gapsOf, needsReview, sourceName } from "./enrich";
+import { changedText, enrichErrorInfo, gapsOf, needsReview, sourceName, sourcesFor } from "./enrich";
 import type { Title } from "./types";
 
 const t = (s: string) => s;
@@ -45,7 +45,18 @@ describe("sourceName", () => {
     expect(sourceName("tmdb")).toBe("TMDB");
     expect(sourceName("shikimori")).toBe("Shikimori");
     expect(sourceName("openlibrary")).toBe("Open Library");
-    expect(sourceName("anilist")).toBe("anilist");
+    expect(sourceName("anilist")).toBe("AniList");
+    expect(sourceName("kitsu")).toBe("kitsu");
+  });
+});
+
+describe("sourcesFor", () => {
+  it("у аниме и манги два источника, первый по умолчанию", () => {
+    expect(sourcesFor("anime")).toEqual(["shikimori", "anilist"]);
+    expect(sourcesFor("manga")).toEqual(["shikimori", "anilist"]);
+  });
+  it("у остальных типов выбирать нечего", () => {
+    for (const t of ["series", "movie", "show", "cartoon", "book", "audiobook"] as const) expect(sourcesFor(t)).toEqual([]);
   });
 });
 

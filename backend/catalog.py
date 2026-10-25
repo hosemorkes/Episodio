@@ -12,7 +12,7 @@ DEFAULT_CATEGORIES = ("anime", "tv_series", "movie", "manga", "book")
 
 # Популярное меняется медленно, а на полки уходит несколько запросов к внешним API: ответы держим час
 POPULAR_TTL = 3600.0
-_popular_cache: dict[tuple[str, int], tuple[float, list[Candidate]]] = {}
+_popular_cache: dict[tuple[str, int, str], tuple[float, list[Candidate]]] = {}
 
 
 def clear_popular_cache() -> None:
@@ -35,6 +35,11 @@ def to_result(candidate: Candidate, category: str) -> CatalogResult:
     )
 
 
+def _provider(enricher, category: str, source: Optional[str]):
+    # Без source вызов остаётся прежним: у простых реестров (и тестовых заглушек) второго аргумента может не быть
+    return enricher.provider_for(category, source) if source else enricher.provider_for(category)
+
+
 def _collect(
     enricher,
     categories: tuple[str, ...],
@@ -42,6 +47,7 @@ def _collect(
     errors_to_catch: tuple,
     describe: Callable[[Exception], str],
     fetch: Callable[[object, str], list[Candidate]],
+    source: Optional[str] = None,
 ) -> tuple[list[CatalogResult], list[str], Optional[Exception]]:
     """Опрашивает провайдеров указанных категорий через fetch(provider, category).
 
@@ -56,7 +62,7 @@ def _collect(
 
     for category in categories:
         try:
-            candidates = fetch(enricher.provider_for(category), category)
+            candidates = fetch(_provider(enricher, category, source), category)
         except errors_to_catch as e:
             first_error = first_error or e
             message = describe(e)
@@ -80,8 +86,9 @@ def search_catalog(
     limit: int,
     errors_to_catch: tuple,
     describe: Callable[[Exception], str],
+    source: Optional[str] = None,
 ) -> tuple[list[CatalogResult], list[str], Optional[Exception]]:
-    """Ищет строку по провайдерам указанных категорий (см. _collect)."""
+    """Ищет строку по провайдерам указанных категорий (см. _collect); source выбирает источник вместо источника по умолчанию."""
 
     def fetch(provider, category):
         # Провайдеры ищут по полям карточки: строка запроса подставляется как оригинальное и русское название
@@ -90,7 +97,7 @@ def search_catalog(
         )
         return provider.search(probe)
 
-    return _collect(enricher, categories, limit, errors_to_catch, describe, fetch)
+    return _collect(enricher, categories, limit, errors_to_catch, describe, fetch, source)
 
 
 def popular_catalog(
@@ -100,6 +107,7 @@ def popular_catalog(
     errors_to_catch: tuple,
     describe: Callable[[Exception], str],
     clock: Callable[[], float] = time.monotonic,
+    source: Optional[str] = None,
 ) -> tuple[list[CatalogResult], list[str], Optional[Exception]]:
     """Популярное по категориям: у каждого провайдера метод popular(category, limit), ответы кэшируются на час.
 
@@ -107,7 +115,7 @@ def popular_catalog(
     """
 
     def fetch(provider, category):
-        key = (category, limit)
+        key = (category, limit, provider.source)  # источник входит в ключ: у аниме их два
         cached = _popular_cache.get(key)
         if cached and clock() < cached[0]:
             return cached[1]
@@ -118,4 +126,4 @@ def popular_catalog(
         _popular_cache[key] = (clock() + POPULAR_TTL, candidates)  # ошибки в кэш не попадают
         return candidates
 
-    return _collect(enricher, categories, limit, errors_to_catch, describe, fetch)
+    return _collect(enricher, categories, limit, errors_to_catch, describe, fetch, source)

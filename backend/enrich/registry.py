@@ -3,24 +3,38 @@ from typing import Callable, Optional
 from urllib.parse import urlparse
 
 from backend.enrich.base import Provider, ProviderError, UnsupportedCategoryError
+from backend.enrich.anilist import AniListProvider
 from backend.enrich.client import download_image
 from backend.enrich.openlibrary import OpenLibraryProvider
 from backend.enrich.shikimori import ShikimoriProvider
 from backend.enrich.tmdb import TMDBProvider
 
-# Каждая категория записи обслуживается ровно одним провайдером
-PROVIDER_CLASSES = (TMDBProvider, ShikimoriProvider, OpenLibraryProvider)
+# Категорию может обслуживать несколько провайдеров (аниме и манга: Shikimori и AniList). Источником по умолчанию
+# считается первый подходящий в этом списке; другой выбирается явно (параметр source, опция --source скрипта)
+PROVIDER_CLASSES = (TMDBProvider, ShikimoriProvider, AniListProvider, OpenLibraryProvider)
 ALL_CATEGORIES = frozenset().union(*(cls.categories for cls in PROVIDER_CLASSES))
 
 
-def build_providers(category: Optional[str] = None) -> tuple[list[Provider], list[str]]:
-    """Создаёт провайдеров: нужного для категории или всех. Возвращает (провайдеры, причины пропуска).
+def categories_of(source: str) -> frozenset[str]:
+    """Категории, которые обслуживает источник (пусто, если такого источника нет)."""
+    return next((cls.categories for cls in PROVIDER_CLASSES if cls.source == source), frozenset())
+
+
+def sources_for(category: str) -> list[str]:
+    """Источники категории, по умолчанию первый."""
+    return [cls.source for cls in PROVIDER_CLASSES if category in cls.categories]
+
+
+def build_providers(category: Optional[str] = None, source: Optional[str] = None) -> tuple[list[Provider], list[str]]:
+    """Создаёт провайдеров: нужного для категории (и источника) или всех. Возвращает (провайдеры, причины пропуска).
 
     Провайдер, которому не хватает настроек (нет ключа или User-Agent), пропускается с пояснением.
     """
     providers, skipped = [], []
     for cls in PROVIDER_CLASSES:
         if category and category not in cls.categories:
+            continue
+        if source and cls.source != source:
             continue
         try:
             providers.append(cls())
@@ -49,14 +63,23 @@ class Enricher:
         self._classes = provider_classes
         self._providers: dict = {}
 
-    def provider_for(self, category: str) -> Provider:
-        """Провайдер категории. Бросает UnsupportedCategoryError или ProviderConfigError (нет ключа и т.п.)."""
+    def provider_for(self, category: str, source: Optional[str] = None) -> Provider:
+        """Провайдер категории: указанный источник или первый подходящий (по умолчанию).
+
+        Бросает UnsupportedCategoryError (нет источника для категории) или ProviderConfigError (нет ключа и т.п.).
+        """
         for cls in self._classes:
-            if category in cls.categories:
+            if category in cls.categories and (source is None or cls.source == source):
                 if cls not in self._providers:
                     self._providers[cls] = cls()
                 return self._providers[cls]
+        if source is not None and any(category in cls.categories for cls in self._classes):
+            raise UnsupportedCategoryError(f"Источник «{source}» не обслуживает категорию «{category}»")
         raise UnsupportedCategoryError(f"Для категории «{category}» обогащение не поддерживается")
+
+    def categories_of(self, source: str) -> frozenset[str]:
+        """Категории источника (по классам: провайдер при этом не создаётся)."""
+        return next((cls.categories for cls in self._classes if cls.source == source), frozenset())
 
     def download(self, url: str) -> tuple[bytes, str]:
         """Скачивает картинку через клиент провайдера, чей хост совпадает с адресом."""

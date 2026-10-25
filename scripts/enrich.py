@@ -204,10 +204,15 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--category", choices=sorted(ALL_CATEGORIES), help="Только эта категория")
     parser.add_argument("--limit", type=int, help="Обработать не больше N записей")
     parser.add_argument("--id", type=int, dest="item_id", help="Обработать одну запись")
+    parser.add_argument(
+        "--source",
+        choices=sorted(cls.source for cls in PROVIDER_CLASSES),
+        help="Только этот источник (по умолчанию первый подходящий для категории, у аниме и манги это Shikimori)",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Показать результат, ничего не записывая")
     args = parser.parse_args(argv)
 
-    providers, skipped = build_providers(args.category)
+    providers, skipped = build_providers(args.category, args.source)
     if not providers:
         for reason in skipped:
             print(reason, file=sys.stderr)
@@ -215,7 +220,11 @@ def main(argv: Optional[list[str]] = None) -> int:
     for reason in skipped:
         print(f"Пропущено: {reason}\n", file=sys.stderr)
 
-    by_category = {category: provider for provider in providers for category in provider.categories}
+    # Категорию обслуживает первый подходящий провайдер (порядок PROVIDER_CLASSES); другой выбирается через --source
+    by_category: dict = {}
+    for provider in providers:
+        for category in provider.categories:
+            by_category.setdefault(category, provider)
     db = SessionLocal()
     try:
         items = select_items(db, by_category, args.category, args.item_id, args.limit)

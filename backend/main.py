@@ -343,15 +343,29 @@ EXTERNAL_ERRORS = (ProviderError, httpx.HTTPError, ValueError, KeyError)
 
 # --- Каталог: поиск по внешним источникам и добавление найденного в библиотеку ---
 
-# 7а. Поиск по каталогам. Без category ищем по основным (аниме, сериалы, фильмы, манга, книги)
+def catalog_categories(enricher: Enricher, category: Optional[str], source: Optional[str]) -> tuple[str, ...]:
+    """Категории запроса к каталогу. Без category — основные; с source — только те из них, которые источник обслуживает."""
+    if category:
+        return (category,)
+    if source is None:
+        return catalog.DEFAULT_CATEGORIES
+    categories = tuple(c for c in catalog.DEFAULT_CATEGORIES if c in enricher.categories_of(source))
+    if not categories:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Неизвестный источник «{source}»")
+    return categories
+
+
+# 7а. Поиск по каталогам. Без category ищем по основным (аниме, сериалы, фильмы, манга, книги).
+# source выбирает источник вместо источника по умолчанию (у аниме и манги, кроме Shikimori, есть AniList)
 @app.get("/catalog/search", response_model=CatalogSearchResponse)
 def search_in_catalog(
     q: str = Query(..., min_length=2, max_length=100, description="Название или его часть"),
     category: Optional[Category] = None,
+    source: Optional[str] = Query(None, max_length=32, description="Источник: tmdb, shikimori, anilist, openlibrary"),
     limit: int = Query(10, ge=1, le=20, description="Сколько результатов брать из каждой категории"),
     enricher: Enricher = Depends(get_enricher),
 ):
-    categories = (category,) if category else catalog.DEFAULT_CATEGORIES
+    categories = catalog_categories(enricher, category, source)
     results, errors, failure = catalog.search_catalog(
         enricher,
         q.strip(),
@@ -359,6 +373,7 @@ def search_in_catalog(
         limit,
         errors_to_catch=EXTERNAL_ERRORS,
         describe=lambda e: str(enrich_error(e).detail),
+        source=source,
     )
     if failure is not None:
         # Ни один источник не ответил: ошибка внешнего сервиса (502/503), а не пустой список
@@ -370,16 +385,18 @@ def search_in_catalog(
 @app.get("/catalog/popular", response_model=CatalogSearchResponse)
 def popular_in_catalog(
     category: Optional[Category] = None,
+    source: Optional[str] = Query(None, max_length=32, description="Источник: tmdb, shikimori, anilist, openlibrary"),
     limit: int = Query(12, ge=1, le=30, description="Сколько результатов брать из каждой категории"),
     enricher: Enricher = Depends(get_enricher),
 ):
-    categories = (category,) if category else catalog.DEFAULT_CATEGORIES
+    categories = catalog_categories(enricher, category, source)
     results, errors, failure = catalog.popular_catalog(
         enricher,
         categories,
         limit,
         errors_to_catch=EXTERNAL_ERRORS,
         describe=lambda e: str(enrich_error(e).detail),
+        source=source,
     )
     if failure is not None:
         raise enrich_error(failure) from failure
@@ -390,7 +407,7 @@ def popular_in_catalog(
 @app.post("/items/from-catalog", response_model=MediaItemResponse, status_code=status.HTTP_201_CREATED)
 def add_from_catalog(body: CatalogAddRequest, db: Session = Depends(get_db), enricher: Enricher = Depends(get_enricher)):
     try:
-        provider = enricher.provider_for(body.category)
+        provider = enricher.provider_for(body.category, body.source)
     except ProviderError as e:
         raise enrich_error(e) from e
     if provider.source != body.source:
@@ -459,10 +476,15 @@ def add_from_catalog(body: CatalogAddRequest, db: Session = Depends(get_db), enr
 
 # 8. Варианты для ручного выбора: ищем у провайдера категории, ничего не сохраняем
 @app.get("/items/{item_id}/enrich/candidates", response_model=list[EnrichCandidate])
-def enrich_candidates(item_id: int, db: Session = Depends(get_db), enricher: Enricher = Depends(get_enricher)):
+def enrich_candidates(
+    item_id: int,
+    source: Optional[str] = Query(None, max_length=32, description="Источник вместо источника по умолчанию (например, anilist)"),
+    db: Session = Depends(get_db),
+    enricher: Enricher = Depends(get_enricher),
+):
     db_item = get_item_or_404(db, item_id)
     try:
-        candidates = enricher.provider_for(db_item.category).search(db_item)
+        candidates = enricher.provider_for(db_item.category, source).search(db_item)
     except EXTERNAL_ERRORS as e:
         raise enrich_error(e) from e
     return [EnrichCandidate(**asdict(candidate)) for candidate in candidates]
@@ -480,7 +502,7 @@ def enrich_apply(
     db_item = get_item_or_404(db, item_id)
 
     try:
-        provider = enricher.provider_for(db_item.category)
+        provider = enricher.provider_for(db_item.category, body.source)
     except ProviderError as e:
         raise enrich_error(e) from e
     if provider.source != body.source:

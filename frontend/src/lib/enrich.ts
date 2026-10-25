@@ -1,6 +1,6 @@
 /** Логика ручного обогащения: чего не хватает карточке, подписи источников и полей, разбор ошибок */
 import { ApiError } from "./api";
-import type { Title } from "./types";
+import type { Title, TitleType } from "./types";
 
 type Tr = (ru: string) => string;
 
@@ -26,8 +26,16 @@ export function gapsOf(it: Title): Gap[] {
 
 export const needsReview = (it: Title) => gapsOf(it).length > 0;
 
-const SOURCE_NAMES: Record<string, string> = { tmdb: "TMDB", shikimori: "Shikimori", openlibrary: "Open Library" };
+const SOURCE_NAMES: Record<string, string> = { tmdb: "TMDB", shikimori: "Shikimori", anilist: "AniList", openlibrary: "Open Library" };
 export const sourceName = (source: string) => SOURCE_NAMES[source] ?? source;
+
+/**
+ * Источники, из которых можно выбирать для типа (первый — по умолчанию). Зеркало реестра бэкенда
+ * (PROVIDER_CLASSES): у аниме и манги два источника, у остальных типов один, выбирать там нечего.
+ */
+export function sourcesFor(type: TitleType): string[] {
+  return type === "anime" || type === "manga" ? ["shikimori", "anilist"] : [];
+}
 
 /** Поля БД из ответа apply -> названия для тоста */
 const FIELD_LABELS: Record<string, string> = {

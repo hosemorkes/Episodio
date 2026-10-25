@@ -282,6 +282,12 @@ def test_openlibrary_needs_no_configuration(monkeypatch):
 def clean_env(monkeypatch):
     for name in ("TMDB_API_KEY", "SHIKIMORI_USER_AGENT", "OPENLIBRARY_USER_AGENT"):
         monkeypatch.delenv(name, raising=False)
+
+    def forbidden():
+        raise AssertionError("тест открыл рабочую базу: SessionLocal нужно подменить (см. test_main_dispatches_by_category)")
+
+    # main() обращается к SessionLocal; без подмены он подключился бы к рабочей базе из .env
+    monkeypatch.setattr(enrich, "SessionLocal", forbidden)
     return monkeypatch
 
 
@@ -292,12 +298,23 @@ def sources(providers):
 def test_build_providers_for_category(clean_env):
     clean_env.setenv("SHIKIMORI_USER_AGENT", "Episodio-tests")
     providers, skipped = build_providers("anime")
-    assert sources(providers) == ["shikimori"]
+    assert sources(providers) == ["anilist", "shikimori"]  # у аниме два источника, AniList ничего не требует
     assert skipped == []
+    providers, skipped = build_providers("anime", "shikimori")
+    assert sources(providers) == ["shikimori"]
+    providers, skipped = build_providers("book")
+    assert sources(providers) == ["openlibrary"]
+
+
+def test_build_providers_source_filter(clean_env):
+    providers, skipped = build_providers("manga", "anilist")
+    assert sources(providers) == ["anilist"] and skipped == []
+    providers, skipped = build_providers("movie", "anilist")  # AniList кино не обслуживает
+    assert providers == [] and skipped == []
 
 
 def test_build_providers_reports_missing_settings_for_category(clean_env):
-    providers, skipped = build_providers("anime")
+    providers, skipped = build_providers("anime", "shikimori")
     assert providers == []
     assert "SHIKIMORI_USER_AGENT" in skipped[0]
 
@@ -308,7 +325,7 @@ def test_build_providers_reports_missing_settings_for_category(clean_env):
 
 def test_build_providers_skips_unconfigured_ones(clean_env):
     providers, skipped = build_providers(None)
-    assert sources(providers) == ["openlibrary"]
+    assert sources(providers) == ["anilist", "openlibrary"]
     assert len(skipped) == 2
 
 
@@ -316,17 +333,19 @@ def test_build_providers_all_configured(clean_env):
     clean_env.setenv("TMDB_API_KEY", "key")
     clean_env.setenv("SHIKIMORI_USER_AGENT", "Episodio-tests")
     providers, skipped = build_providers(None)
-    assert sources(providers) == ["openlibrary", "shikimori", "tmdb"]
+    assert sources(providers) == ["anilist", "openlibrary", "shikimori", "tmdb"]
     assert skipped == []
 
 
-def test_every_category_has_exactly_one_provider():
+def test_every_category_has_a_default_provider():
     owners = {}
     for cls in enrich.PROVIDER_CLASSES:
         for category in cls.categories:
-            assert category not in owners, f"{category} обслуживают два провайдера"
-            owners[category] = cls
+            owners.setdefault(category, []).append(cls.source)
     assert set(owners) == {"tv_series", "tv_show", "cartoon", "movie", "anime", "manga", "book", "audiobook"}
+    # источник по умолчанию — первый в списке: у аниме и манги это Shikimori, AniList выбирается явно
+    assert owners["anime"] == owners["manga"] == ["shikimori", "anilist"]
+    assert all(len(sources_) == 1 for category, sources_ in owners.items() if category not in ("anime", "manga"))
 
 
 def test_downloader_routes_by_host():
@@ -462,7 +481,7 @@ def test_run_enrich_stops_on_provider_auth_error(db, posters_dir):
 
 def test_main_anime_without_user_agent_returns_2(clean_env, capsys):
     clean_env.setattr(enrich, "load_dotenv", lambda *args, **kwargs: None)
-    assert enrich.main(["--category", "anime"]) == 2
+    assert enrich.main(["--category", "anime", "--source", "shikimori"]) == 2
     assert "SHIKIMORI_USER_AGENT" in capsys.readouterr().err
 
 
@@ -490,7 +509,7 @@ def test_main_dispatches_by_category(db, posters_dir, tmp_path, monkeypatch, cap
     monkeypatch.setattr(enrich, "load_dotenv", lambda *args, **kwargs: None)
     monkeypatch.setattr(enrich, "SessionLocal", lambda: NoCloseSession())
     monkeypatch.setattr(enrich, "REVIEW_PATH", tmp_path / "review.json")
-    monkeypatch.setattr(enrich, "build_providers", lambda category: ([provider], []))
+    monkeypatch.setattr(enrich, "build_providers", lambda category, source=None: ([provider], []))
 
     assert enrich.main([]) == 0
 
@@ -498,3 +517,43 @@ def test_main_dispatches_by_category(db, posters_dir, tmp_path, monkeypatch, cap
     assert db.get(MediaItem, anime.id).genres == ["экшен"]
     assert db.get(MediaItem, movie.id).genres in (None, [])  # для movie провайдера не было
     assert "Обогащено: 1" in capsys.readouterr().out
+
+
+def test_main_uses_first_provider_by_default_and_source_picks_another(db, posters_dir, tmp_path, monkeypatch, capsys):
+    """У аниме два источника: без --source работает первый (Shikimori), AniList только по выбору."""
+    first = DetailedProvider(anime_candidate())
+    first.source = "shikimori"
+    second = DetailedProvider(anime_candidate())
+    second.source = "anilist"
+    def arm():
+        # main() закрывает клиентов провайдеров в конце, поэтому перед каждым запуском они создаются заново
+        for provider in (first, second):
+            provider.image_hosts = ("shikimori.io",)
+            provider.fetcher = make_fetcher(lambda request: httpx.Response(200, content=PNG, headers={"content-type": "image/png"}))
+
+
+    class NoCloseSession:
+        def __getattr__(self, name):
+            return getattr(db, name)
+
+        def close(self):
+            pass
+
+    def fake_build(category, source=None):
+        providers = [p for p in (first, second) if source in (None, p.source)]
+        return providers, []
+
+    monkeypatch.setattr(enrich, "load_dotenv", lambda *args, **kwargs: None)
+    monkeypatch.setattr(enrich, "SessionLocal", lambda: NoCloseSession())
+    monkeypatch.setattr(enrich, "REVIEW_PATH", tmp_path / "review.json")
+    monkeypatch.setattr(enrich, "build_providers", fake_build)
+
+    add_anime(db)
+    arm()
+    assert enrich.main(["--category", "anime"]) == 0
+    assert (first.detail_calls, second.detail_calls) == (1, 0)
+
+    add_anime(db, title_ru="Атака титанов (копия)")
+    arm()
+    assert enrich.main(["--category", "anime", "--source", "anilist"]) == 0
+    assert second.detail_calls == 1

@@ -552,7 +552,14 @@ describe("ручное обогащение", () => {
     reset([title()]);
     m.listCandidates.mockResolvedValue([cand]);
     expect(await state().enrichCandidates(1)).toEqual([cand]);
-    expect(m.listCandidates).toHaveBeenCalledWith(1);
+    expect(m.listCandidates).toHaveBeenCalledWith(1, undefined);
+  });
+
+  it("enrichCandidates передаёт выбранный источник", async () => {
+    reset([title()]);
+    m.listCandidates.mockResolvedValue([]);
+    await state().enrichCandidates(1, "anilist");
+    expect(m.listCandidates).toHaveBeenCalledWith(1, "anilist");
   });
 
   it("enrichApply обновляет карточку в библиотеке и возвращает заполненные поля", async () => {
