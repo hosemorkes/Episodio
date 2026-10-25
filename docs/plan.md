@@ -22,11 +22,17 @@
 }
 ```
 
+
 ### Шаг 1. Проектирование базы данных (модели данных)
 
-Файл `scripts/schema.sql` — единственный источник правды о структуре БД. В ней две таблицы: `media_items` (библиотека) и `progress_log` (журнал отметок для ленты активности). Скрипт идемпотентный, его можно запускать повторно (`python -m scripts.init_db`).
+Файл `scripts/schema.sql` — единственный источник правды о структуре БД. В ней три таблицы: `media_items` (библиотека), `progress_log` (журнал отметок для ленты активности и статистики) и `showcases` (публичные страницы «мой топ»). Скрипт идемпотентный, его можно запускать повторно (`python -m scripts.init_db`): на старой базе он добавит недостающее и не тронет записи.
+
+> Блок ниже — дословная копия `scripts/schema.sql`. Тест `tests/test_docs.py` следит, чтобы они не расходились; при любом расхождении верить файлу.
 
 ```sql
+-- Структура БД Episodio — единственный источник правды.
+-- Скрипт идемпотентный: его можно запускать повторно без ошибок.
+
 CREATE TABLE IF NOT EXISTS media_items (
     id SERIAL PRIMARY KEY,
 
@@ -128,6 +134,22 @@ CREATE TABLE IF NOT EXISTS progress_log (
 
 CREATE INDEX IF NOT EXISTS idx_progress_log_item_logged ON progress_log (item_id, logged_at DESC);
 CREATE INDEX IF NOT EXISTS idx_progress_log_logged ON progress_log (logged_at DESC);
+
+-- Витрины: публичные страницы «мой топ» (категория, год и месяц завершения, число мест)
+CREATE TABLE IF NOT EXISTS showcases (
+    id         SERIAL PRIMARY KEY,
+    slug       VARCHAR(64) NOT NULL UNIQUE
+        CHECK (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),   -- адрес: латиница, цифры и дефисы
+    title      VARCHAR(120) NOT NULL,
+    category   VARCHAR(50)
+        CHECK (category IN ('anime','cartoon','tv_series','movie','tv_show','manga','book','audiobook')),  -- NULL = все
+    year       INTEGER CHECK (year BETWEEN 1900 AND 2100),   -- год завершения (finished_at); NULL = за всё время
+    month      INTEGER CHECK (month BETWEEN 1 AND 12),       -- месяц завершения, только вместе с годом
+    max_items  INTEGER NOT NULL DEFAULT 8 CHECK (max_items BETWEEN 1 AND 50),
+    is_public  BOOLEAN NOT NULL DEFAULT FALSE,               -- пока FALSE, публичный адрес отвечает 404
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CHECK (month IS NULL OR year IS NOT NULL)
+);
 ```
 
 #### Соответствие полей JSON и таблицы
@@ -163,538 +185,207 @@ CREATE INDEX IF NOT EXISTS idx_progress_log_logged ON progress_log (logged_at DE
 7. **Как работают постеры.**
    - Загружать картинки «на лету» с чужих сайтов при каждом открытии страницы — плохая идея: сайт тормозит, а если источник удалит картинку, в **Episodio** появятся битые иконки.
    - Поэтому при добавлении тайтла бэкенд находит постер через внешнее API (шаг 4) и **скачивает файл в папку проекта** `media/posters/`. В базе хранится только путь в `poster_url`, например `/posters/42.jpg`. База не раздувается, а папку с постерами легко бэкапить.
-   - **Свой постер.** В интерфейсе будет кнопка «Загрузить свою картинку» (или вставить ссылку). Файл сохраняется в ту же папку и навсегда закрепляется за карточкой. Это удобно для редких книг и шоу, у которых нет постера в API.
+   - **Свой постер.** В форме тайтла есть кнопка «Загрузить»: файл (jpeg, png или webp до 5 МБ) уходит в `POST /items/{id}/poster`, сохраняется в ту же папку и закрепляется за карточкой. Это удобно для редких книг и шоу, у которых нет постера в API. Через `PATCH` в `poster_url` можно записать и внешний URL.
 
 8. **Сколько всего (`total_episodes`, `total_chapters`).** Парные поля к `current_episode` и `current_chapter`: по ним считаются прогресс-бар, «осталось» и автоматический переход в `completed`. `NULL` — общее число неизвестно (идущий сериал) или неприменимо (фильм). Страницы книг не храним: прогресс книг, манги и аудиокниг считается по главам.
 
 9. **Описание (`description`).** Синопсис для карточки, его же может заполнить обогащение из внешних API. Личная заметка или рецензия лежит отдельно, в `comment`: отдельной таблицы отзывов нет, заметка к тайтлу одна.
 
-10. **Дата завершения (`finished_at`).** Ставится триггером `set_finished_at`, когда статус становится `completed`, и сбрасывается в `NULL`, если статус изменили на другой. Триггер в БД срабатывает при любом способе записи (API, импорт, ручной SQL). Через API поле только читается. По нему строятся «витрины» (топ за год или месяц).
+10. **Дата завершения (`finished_at`).** Ставится триггером `set_finished_at`, когда статус становится `completed`, и сбрасывается в `NULL`, если статус изменили на другой. Триггер в БД срабатывает при любом способе записи (API, импорт, ручной SQL). Через API поле только читается. По нему строятся публичные витрины (топ за год или месяц) и дата завершения в экспорте.
 
-11. **Журнал (`progress_log`).** Каждая отметка «+1 серия» или «+1 глава» пишет строку `(item_id, unit, number, logged_at)`: `unit` — `episode`, `chapter` или `movie`. Из журнала строятся лента активности `/feed`, карточка «Продолжить» и статистика по периодам. Правила:
+11. **Журнал (`progress_log`).** Каждая отметка «+1 серия» или «+1 глава» пишет строку `(item_id, unit, number, logged_at)`: `unit` — `episode`, `chapter` или `movie`. Из журнала строятся лента активности `/feed` и график «Эта неделя» (`GET /stats`). Правила:
     - откат «−1» уменьшает счётчик и удаляет последнюю запись журнала этого тайтла, если она есть;
     - у фильма прогресса нет: при переходе в `completed` пишется запись `movie` с номером 1, при возврате в другой статус последняя запись удаляется;
     - записи журнала удаляются вместе с тайтлом (`ON DELETE CASCADE`).
+
+12. **Витрины (`showcases`).** Витрина хранит не список записей, а фильтр: категория (или все), год и месяц завершения (по `finished_at`; месяц только вместе с годом), число мест (1–50), название и адрес `slug` (латиница, цифры, дефисы, уникальный). Содержимое считается при каждом открытии: завершённые записи с оценкой, по убыванию оценки. Флаг `is_public` по умолчанию `FALSE`: пока он не включён, публичный адрес отвечает 404 так же, как для несуществующей витрины.
+
 
 ### Шаг 2. Разработка бэкенда (FastAPI)
 
 #### 2.1. Структура проекта
 
-```
-episodio/
-│
-├── requirements.txt      # Зависимости проекта
-├── data/
-│   └── media.json        # Структурированный список (результат разового парсинга)
-└── backend/
-    ├── schema.sql        # Создание таблицы (шаг 1)
-    ├── database.py       # Подключение к PostgreSQL
-    ├── models.py         # Описание таблицы для SQLAlchemy
-    ├── schemas.py        # Pydantic-схемы: что API принимает и отдаёт
-    ├── main.py           # Приложение FastAPI и эндпоинты
-    └── import_json.py    # Импорт JSON в базу (шаг 3)
+```text
+Episodio/
+├── backend/                # Пакет приложения (импорты абсолютные: from backend.xxx import ...)
+│   ├── database.py         # Подключение к PostgreSQL (DATABASE_URL или DB_*), сессия get_db
+│   ├── models.py           # Модели SQLAlchemy: MediaItem, ProgressLog, Showcase (повторяют schema.sql)
+│   ├── schemas.py          # Pydantic-схемы: что API принимает и отдаёт
+│   ├── main.py             # Приложение FastAPI, защита ключом, эндпоинты библиотеки, каталога и обогащения
+│   ├── progress.py         # Отметка серий и глав, откат, журнал progress_log
+│   ├── posters.py          # Сохранение и удаление файлов постеров в media/posters
+│   ├── catalog.py          # Поиск и «популярное» по внешним каталогам, кэш популярного
+│   ├── stats.py            # GET /stats: распределения, топ, итоги, активность по дням
+│   ├── showcase.py         # Витрины: выборка топа, управление, публичный ответ и постеры
+│   ├── exporter.py         # GET /export: Excel и JSON
+│   └── enrich/             # Внешние источники: base, client, registry, tmdb, shikimori, anilist, openlibrary
+├── scripts/                # schema.sql, init_db, import_json, enrich, backup (запуск: python -m scripts.<имя>)
+├── tests/                  # pytest; внешние API в тестах не вызываются
+├── frontend/               # Next.js (шаг 5)
+├── data/                   # Личные данные и копии (в git не попадают)
+├── media/posters/          # Файлы постеров (в git не попадают)
+└── docs/                   # Этот план, дорожная карта, дизайн и бренд
 ```
 
-#### 2.2. `requirements.txt`
+Всё запускается из корня проекта.
 
-```
+#### 2.2. Зависимости
+
+`requirements.txt` (версии зафиксированы и проверены на Python 3.13):
+
+```text
 fastapi==0.150.0
 uvicorn==0.54.0
 sqlalchemy==2.1.5
 psycopg2-binary==2.9.13
 pydantic==2.13.5
+python-dotenv==1.2.4
+python-multipart==0.0.32
+httpx==0.28.1
+openpyxl==3.1.5
 ```
 
-> Версии из старого плана (pydantic 2.6, SQLAlchemy 2.0.28) не устанавливаются на свежем Python 3.13: pydantic-core не собирается. Версии выше проверены на Python 3.13.
-
-#### 2.3. `database.py` — подключение к PostgreSQL
-
-Строка подключения берётся из переменной окружения `DATABASE_URL`, а если её нет — используется значение по умолчанию. Пароль не придётся хранить в коде.
-
-Драйвер указан явно (`postgresql+psycopg2://`): SQLAlchemy 2.1 для адреса `postgresql://` по умолчанию ищет другой драйвер (`psycopg` 3) и без него не запустится.
-
-```python
-import os
-
-from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
-
-# Замени user, password, host и dbname на свои или задай переменную окружения DATABASE_URL
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+psycopg2://postgres:postgres@localhost:5432/episodio_db",
-)
-
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-Base = declarative_base()
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-```
-
-#### 2.4. `models.py` — таблица `media_items`
-
-Модель повторяет `schema.sql` один к одному. Ограничения (CHECK) живут в самой базе, поэтому здесь их не дублируем.
-
-```python
-from sqlalchemy import Column, DateTime, Integer, String, Text
-from sqlalchemy.dialects.postgresql import ARRAY
-from sqlalchemy.sql import func
-
-from database import Base
-
-
-class MediaItem(Base):
-    __tablename__ = "media_items"
-
-    id = Column(Integer, primary_key=True, index=True)
-
-    # Основная информация
-    title_ru = Column(String(255), nullable=False)
-    title_original = Column(String(255))
-    category = Column(String(50), nullable=False)
-    genres = Column(ARRAY(Text), server_default="{}")
-    author = Column(String(255))
-    country = Column(String(100))
-    release_year = Column(Integer)
-
-    # Статус
-    status = Column(String(50), nullable=False, server_default="planned")
-
-    # Прогресс (NULL = неприменимо или неизвестно)
-    current_season = Column(Integer)
-    current_episode = Column(Integer)
-    current_volume = Column(Integer)
-    current_chapter = Column(Integer)
-
-    # Озвучка / перевод
-    translation = Column(String(255))
-
-    # Оценки и впечатления
-    rating = Column(Integer)
-    comment = Column(Text)
-
-    # Медиа и ссылки
-    poster_url = Column(Text)
-    source_link = Column(Text)
-
-    # Импорт
-    raw = Column(Text)
-
-    # Служебные поля
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
-```
-
-#### 2.5. `schemas.py` — Pydantic-схемы
-
-Схемы проверяют данные на входе: недопустимая категория, оценка 11 или отрицательная серия отсекаются ещё до базы с понятной ошибкой. Эти же схемы использует скрипт импорта.
-
-```python
-from datetime import datetime
-from typing import Literal, Optional
-
-from pydantic import BaseModel, ConfigDict, Field
-
-Category = Literal[
-    "anime", "cartoon", "tv_series", "movie",
-    "tv_show", "manga", "book", "audiobook",
-]
-Status = Literal["watching", "completed", "planned", "dropped"]
-
-
-class MediaItemBase(BaseModel):
-    title_ru: str = Field(min_length=1, max_length=255)
-    title_original: Optional[str] = Field(None, max_length=255)
-    category: Category
-    genres: list[str] = []
-    author: Optional[str] = Field(None, max_length=255)
-    country: Optional[str] = Field(None, max_length=100)
-    release_year: Optional[int] = None
-
-    status: Status = "planned"
-
-    current_season: Optional[int] = Field(None, ge=0)
-    current_episode: Optional[int] = Field(None, ge=0)
-    current_volume: Optional[int] = Field(None, ge=0)
-    current_chapter: Optional[int] = Field(None, ge=0)
-
-    translation: Optional[str] = Field(None, max_length=255)
-
-    rating: Optional[int] = Field(None, ge=1, le=10)
-    comment: Optional[str] = None
-
-    poster_url: Optional[str] = None
-    source_link: Optional[str] = None
-
-    raw: Optional[str] = None
-
-
-class MediaItemCreate(MediaItemBase):
-    pass
-
-
-class MediaItemUpdate(BaseModel):
-    """Частичное обновление: передаются только изменённые поля."""
-    title_ru: Optional[str] = Field(None, min_length=1, max_length=255)
-    title_original: Optional[str] = Field(None, max_length=255)
-    category: Optional[Category] = None
-    genres: Optional[list[str]] = None
-    author: Optional[str] = Field(None, max_length=255)
-    country: Optional[str] = Field(None, max_length=100)
-    release_year: Optional[int] = None
-
-    status: Optional[Status] = None
-
-    current_season: Optional[int] = Field(None, ge=0)
-    current_episode: Optional[int] = Field(None, ge=0)
-    current_volume: Optional[int] = Field(None, ge=0)
-    current_chapter: Optional[int] = Field(None, ge=0)
-
-    translation: Optional[str] = Field(None, max_length=255)
-
-    rating: Optional[int] = Field(None, ge=1, le=10)
-    comment: Optional[str] = None
-
-    poster_url: Optional[str] = None
-    source_link: Optional[str] = None
-
-
-class MediaItemResponse(MediaItemBase):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    created_at: datetime
-    updated_at: datetime
-```
-
-#### 2.6. `main.py` — эндпоинты (CRUD)
-
-Таблица создаётся скриптом `schema.sql`, а не через `Base.metadata.create_all`, потому что `create_all` не создаёт триггер и CHECK-ограничения.
-
-CORS разрешён для локального фронтенда (порт 5173 у Vite, 3000 у Next.js), иначе браузер не пустит React-приложение к API.
-
-```python
-from typing import Optional
-
-from fastapi import Depends, FastAPI, HTTPException, Query, status
-from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import or_
-from sqlalchemy.orm import Session
-
-from database import get_db
-from models import MediaItem
-from schemas import Category, MediaItemCreate, MediaItemResponse, MediaItemUpdate, Status
-
-app = FastAPI(
-    title="Episodio API",
-    description="Личное хранилище аниме, сериалов, фильмов, манги и книг.",
-    version="1.0.0",
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-def get_item_or_404(db: Session, item_id: int) -> MediaItem:
-    item = db.get(MediaItem, item_id)
-    if item is None:
-        raise HTTPException(status_code=404, detail="Элемент не найден")
-    return item
-
-
-@app.get("/")
-def read_root():
-    return {"message": "Добро пожаловать в Episodio API! 🎬📚"}
-
-
-# 1. Список с фильтрами: категория, статус, жанр и поиск по названию
-@app.get("/items/", response_model=list[MediaItemResponse])
-def list_items(
-    category: Optional[Category] = None,
-    item_status: Optional[Status] = Query(None, alias="status"),
-    genre: Optional[str] = None,
-    q: Optional[str] = Query(None, description="Поиск по русскому или оригинальному названию"),
-    db: Session = Depends(get_db),
-):
-    query = db.query(MediaItem)
-    if category:
-        query = query.filter(MediaItem.category == category)
-    if item_status:
-        query = query.filter(MediaItem.status == item_status)
-    if genre:
-        query = query.filter(MediaItem.genres.any(genre.lower()))
-    if q:
-        pattern = f"%{q}%"
-        query = query.filter(
-            or_(MediaItem.title_ru.ilike(pattern), MediaItem.title_original.ilike(pattern))
-        )
-    return query.order_by(MediaItem.updated_at.desc()).all()
-
-
-# 2. Одна запись
-@app.get("/items/{item_id}", response_model=MediaItemResponse)
-def get_item(item_id: int, db: Session = Depends(get_db)):
-    return get_item_or_404(db, item_id)
-
-
-# 3. Добавить запись
-@app.post("/items/", response_model=MediaItemResponse, status_code=status.HTTP_201_CREATED)
-def create_item(item: MediaItemCreate, db: Session = Depends(get_db)):
-    db_item = MediaItem(**item.model_dump())
-    db.add(db_item)
-    db.commit()
-    db.refresh(db_item)
-    return db_item
-
-
-# 4. Частично обновить запись (прогресс, оценку, статус, заметку...)
-@app.patch("/items/{item_id}", response_model=MediaItemResponse)
-def update_item(item_id: int, item_update: MediaItemUpdate, db: Session = Depends(get_db)):
-    db_item = get_item_or_404(db, item_id)
-    for key, value in item_update.model_dump(exclude_unset=True).items():
-        setattr(db_item, key, value)
-    db.commit()
-    db.refresh(db_item)
-    return db_item
-
-
-# 5. Удалить запись
-@app.delete("/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_item(item_id: int, db: Session = Depends(get_db)):
-    db_item = get_item_or_404(db, item_id)
-    db.delete(db_item)
-    db.commit()
-    return None
-```
-
-#### 2.7. Что умеет бэкенд
-
-- **`GET /items/`** — список с фильтрами: `?category=anime`, `?status=watching`, `?genre=драма`, `?q=калифорния`. Свежеобновлённые записи идут первыми.
-- **`GET /items/{id}`** — одна карточка.
-- **`POST /items/`** — добавить аниме, сериал, книгу и т.д.
-- **`PATCH /items/{id}`** — изменить только переданные поля, например `{"current_episode": 6}` или `{"rating": 9}`. Именно `PATCH`, а не `PUT`, потому что обновление частичное.
-- **`DELETE /items/{id}`** — удалить запись.
-
-#### 2.8. Первый запуск
+`requirements-dev.txt` подключает основной файл и добавляет `pytest`. Зависимости ставятся только в `.venv`. Версии из самого первого плана (pydantic 2.6, SQLAlchemy 2.0.28) на свежем Python 3.13 не собираются.
+
+#### 2.3. Настройки и подключение к БД
+
+Все настройки живут в `.env` в корне проекта (шаблон: `.env.example`, сам `.env` в git не попадает и не читается ассистентом). `backend/database.py` собирает адрес из `DATABASE_URL` или из `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, `DB_NAME`. Драйвер указан явно (`postgresql+psycopg2://`): SQLAlchemy 2.1 для адреса `postgresql://` по умолчанию ищет `psycopg` 3 и без него не запустится.
+
+| Переменная | Для чего |
+| --- | --- |
+| `DB_*` или `DATABASE_URL` | Рабочая база |
+| `TEST_DATABASE_URL` | Тестовая база, обязательно другая (перед каждым тестом её таблицы очищаются; при совпадении с рабочей `pytest` останавливается) |
+| `API_KEY` | Если задан, все эндпоинты, кроме `/`, `/health` и `/posters/...`, требуют заголовок `X-API-Key` |
+| `TMDB_API_KEY`, `SHIKIMORI_USER_AGENT`, `OPENLIBRARY_USER_AGENT` | Внешние источники (шаг 4); AniList настроек не требует |
+| `AUTH_LOGIN`, `AUTH_PASSWORD`, `AUTH_SECRET`, `API_URL`, `PUBLIC_HANDLE` | Фронтенд (шаг 5) |
+
+#### 2.4. Правила бэкенда
+
+- **Структуру БД меняет только `scripts/schema.sql`.** `Base.metadata.create_all` не используется: он не создаёт триггеры и CHECK-ограничения. Любое изменение таблицы — это правка `schema.sql`, `models.py` и `schemas.py` одновременно; ограничения CHECK живут только в базе.
+- **Схемы проверяют вход:** недопустимая категория, оценка 11 или отрицательная серия отсекаются до базы с понятной ошибкой. Те же схемы использует импорт.
+- **Обновление — только PATCH** с частичными данными (`exclude_unset`): `{"rating": 9}`, `{"status": "completed"}`.
+- **Прогресс серий и глав** меняется только через `POST /items/{id}/progress` (он ведёт журнал `progress_log`), а не прямым PATCH счётчика. `finished_at` ставит триггер БД и через API не меняется.
+- **Жанры** хранятся и отдаются строго в нижнем регистре (нормализация в `schemas.py`).
+- **Ошибки внешних API** отдаются как 502 (сервис недоступен или вернул ошибку) или 503 (не настроен, например нет ключа), не как 500.
+- **CORS нет:** браузер ходит только в Next.js, а сервер Next.js проксирует запросы в FastAPI и подставляет `X-API-Key`. FastAPI запускается с `--host 127.0.0.1` и снаружи недоступен.
+- **Защита ключом** подключена зависимостью на уровне приложения, поэтому новые эндпоинты защищены автоматически. Публичные витрины тоже читаются через сервер Next.js с ключом, открыт только сам веб-адрес страницы.
+
+#### 2.5. Эндпоинты
+
+Полный и актуальный список с параметрами: корневой `README.md` (раздел «API») и Swagger `http://127.0.0.1:8000/docs`.
+
+| Группа | Эндпоинты |
+| --- | --- |
+| Служебные | `GET /`, `GET /health` |
+| Библиотека | `GET /items/` (фильтры `category`, `status`, `genre`, `q`; сортировка; `limit`, `offset`), `GET /genres`, `GET/PATCH/DELETE /items/{id}`, `POST /items/` |
+| Прогресс и лента | `POST /items/{id}/progress` (`delta` = 1 или −1), `GET /log` |
+| Постеры | `POST/DELETE /items/{id}/poster`, `GET /posters/{файл}` |
+| Каталог | `GET /catalog/search`, `GET /catalog/popular`, `POST /items/from-catalog` |
+| Обогащение | `GET /items/{id}/enrich/candidates`, `POST /items/{id}/enrich/apply` |
+| Статистика | `GET /stats` |
+| Витрины | `GET/POST /showcases`, `PATCH/DELETE /showcases/{id}`, `POST /showcases/preview`, `GET /public/showcases/{slug}`, `GET /public/showcases/{slug}/posters/{файл}` |
+| Экспорт | `GET /export?format=xlsx|json` |
+
+#### 2.6. Первый запуск
 
 ```bash
-# 1. Создать базу и таблицу
-createdb -U postgres episodio_db
-psql -U postgres -d episodio_db -f backend/schema.sql
-
-# 2. Установить зависимости
-pip install -r requirements.txt
-
-# 3. Запустить API (из папки backend)
-cd backend
-uvicorn main:app --reload
+python -m venv .venv && .venv\Scripts\Activate.ps1      # Windows (PowerShell); на macOS и Linux: source .venv/bin/activate
+pip install -r requirements-dev.txt
+cp .env.example .env                                     # впиши параметры PostgreSQL
+psql -U postgres -c "CREATE DATABASE episodio_db;"
+psql -U postgres -c "CREATE DATABASE episodio_test;"
+python -m scripts.init_db                                # создать таблицы (можно повторять)
+uvicorn backend.main:app --reload --host 127.0.0.1       # API и Swagger: http://127.0.0.1:8000/docs
 ```
 
-FastAPI автоматически сгенерирует интерактивную документацию Swagger UI по адресу http://127.0.0.1:8000/docs. Там можно тестировать все запросы прямо в браузере, без фронтенда.
+#### 2.7. Тесты
+
+```bash
+pytest                      # все тесты (нужна база из TEST_DATABASE_URL, схема применяется сама)
+pytest tests/test_schemas.py   # без базы
+```
+
+Тесты API идут на настоящей PostgreSQL (массивы, ограничения и триггеры есть только в ней). Если `TEST_DATABASE_URL` не задана или база недоступна, тесты с базой пропускаются. Внешние API в тестах не вызываются: только `httpx.MockTransport` и ответы из `tests/fixtures/`. Тесты скриптов не должны открывать рабочую базу: фикстура `clean_env` запрещает это по умолчанию.
 
 ### Шаг 3. Импорт данных из JSON
 
-Старые `.txt`-блокноты (аниме, мультсериалы, сериалы, телепередачи, прочитанное, аудиокниги, «Надо глянуть») уже собраны в структурированный JSON. Регулярные выражения и угадывание категорий по ключевым словам больше не нужны: скрипт только переименовывает поля, проверяет данные и загружает их в базу.
+Старые `.txt`-блокноты (аниме, мультсериалы, сериалы, телепередачи, прочитанное, аудиокниги, «Надо глянуть») уже собраны в структурированный JSON. Регулярные выражения и угадывание категорий по ключевым словам больше не нужны: скрипт `scripts/import_json.py` только переименовывает поля, проверяет данные и загружает их в базу.
 
 #### Что делает скрипт
 
 - Переименовывает `season`/`episode` (и `volume`/`chapter`, если они есть) в колонки `current_*`.
 - Превращает пустые строки в NULL, а жанры приводит к нижнему регистру без повторов.
 - Не переносит статус: у всех записей будет `planned`.
-- Проверяет каждую запись той же Pydantic-схемой, что и API. Записи с ошибками (неизвестная категория, нет названия, оценка вне 1–10) не загружаются, а выводятся списком с указанием строки `raw`.
+- Проверяет каждую запись той же Pydantic-схемой, что и API. Записи с ошибками (неизвестная категория, нет названия, оценка вне 1–10) не загружаются, а выводятся списком с номером и строкой `raw`; остальные загружаются.
 - Пропускает дубликаты: запись считается дублем, если совпадают русское название, оригинальное название и категория (без учёта регистра). Поэтому скрипт можно безопасно запускать повторно: исправил ошибки в JSON, запустил ещё раз, и загрузится только недостающее.
 - Режим `--dry-run` всё проверяет, но ничего не записывает в базу.
-- Принимает один или несколько JSON-файлов: если список разбит по категориям на несколько файлов, их можно передать все сразу.
-
-#### Скрипт `backend/import_json.py`
-
-```python
-"""Импорт структурированного списка (JSON) в таблицу media_items.
-
-Запуск из папки backend:
-    python import_json.py ../data/media.json             # импорт
-    python import_json.py ../data/media.json --dry-run   # только проверка, без записи
-    python import_json.py ../data/anime.json ../data/series.json   # несколько файлов
-"""
-import argparse
-import json
-import sys
-from collections import Counter
-
-from pydantic import ValidationError
-
-from database import SessionLocal
-from models import MediaItem
-from schemas import MediaItemCreate
-
-# Поля JSON, которые называются иначе, чем колонки таблицы
-FIELD_MAP = {
-    "season": "current_season",
-    "episode": "current_episode",
-    "volume": "current_volume",
-    "chapter": "current_chapter",
-}
-
-
-def clean(value):
-    """Обрезает пробелы; пустую строку превращает в None."""
-    if isinstance(value, str):
-        value = value.strip()
-        return value or None
-    return value
-
-
-def to_item(record: dict) -> MediaItemCreate:
-    data = {FIELD_MAP.get(key, key): clean(value) for key, value in record.items()}
-
-    # Жанры: нижний регистр, без пустых значений и повторов, порядок сохраняется
-    genres = data.get("genres") or []
-    data["genres"] = list(dict.fromkeys(g.strip().lower() for g in genres if g and g.strip()))
-
-    # Статус не импортируем: у всех записей будет значение по умолчанию 'planned'
-    data.pop("status", None)
-
-    # Неизвестные ключи (если появятся в JSON) Pydantic просто проигнорирует
-    return MediaItemCreate(**data)
-
-
-def dedup_key(title_ru: str, title_original, category: str) -> tuple:
-    return (title_ru.casefold(), (title_original or "").casefold(), category)
-
-
-def load_records(paths: list[str]) -> list[tuple[str, int, object]]:
-    records = []
-    for path in paths:
-        with open(path, encoding="utf-8") as f:
-            data = json.load(f)
-        if not isinstance(data, list):
-            sys.exit(f"{path}: ожидался JSON-массив записей")
-        records.extend((path, index, record) for index, record in enumerate(data, start=1))
-    return records
-
-
-def describe(record) -> str:
-    if isinstance(record, dict):
-        return record.get("raw") or record.get("title_ru") or "?"
-    return repr(record)[:60]
-
-
-def main():
-    parser = argparse.ArgumentParser(description="Импорт JSON-списка в Episodio")
-    parser.add_argument("files", nargs="+", help="Путь к одному или нескольким JSON-файлам")
-    parser.add_argument("--dry-run", action="store_true", help="Проверить без записи в базу")
-    args = parser.parse_args()
-
-    records = load_records(args.files)
-
-    db = SessionLocal()
-    try:
-        # Что уже есть в базе — чтобы повторный запуск не создавал дубли
-        seen = {
-            dedup_key(t, o, c)
-            for t, o, c in db.query(MediaItem.title_ru, MediaItem.title_original, MediaItem.category)
-        }
-
-        added = Counter()
-        duplicates = 0
-        errors = []
-
-        for path, index, record in records:
-            if not isinstance(record, dict):
-                errors.append(f"{path} #{index}: запись не является объектом — {describe(record)}")
-                continue
-            try:
-                item = to_item(record)
-            except ValidationError as e:
-                first = e.errors()[0]
-                field = ".".join(str(part) for part in first["loc"])
-                errors.append(f"{path} #{index} [{describe(record)}]: {field} — {first['msg']}")
-                continue
-
-            key = dedup_key(item.title_ru, item.title_original, item.category)
-            if key in seen:
-                duplicates += 1
-                continue
-            seen.add(key)
-
-            db.add(MediaItem(**item.model_dump()))
-            added[item.category] += 1
-
-        if args.dry_run:
-            db.rollback()
-        else:
-            db.commit()
-    except Exception:
-        db.rollback()
-        raise
-    finally:
-        db.close()
-
-    mode = "ПРОВЕРКА (в базу ничего не записано)" if args.dry_run else "ИМПОРТ"
-    print(f"\n=== {mode} ===")
-    print(f"Всего записей в файлах: {len(records)}")
-    print(f"Добавлено: {sum(added.values())}")
-    for category, count in added.most_common():
-        print(f"  {category}: {count}")
-    print(f"Пропущено дубликатов: {duplicates}")
-    print(f"Ошибок: {len(errors)}")
-    for line in errors:
-        print(f"  ✗ {line}")
-
-
-if __name__ == "__main__":
-    main()
-```
+- Принимает один или несколько JSON-файлов.
+- Код возврата: `0` — ошибок нет, `1` — в файлах были записи с ошибками.
 
 #### Как запустить импорт
 
-1. Положи JSON в `episodio/data/media.json` (или укажи свой путь при запуске).
-2. Убедись, что PostgreSQL запущен и таблица создана (шаг 2.8).
-3. Сначала проверка, затем импорт (из папки `backend`):
+1. Положи JSON в `data/media.json` (папка `data/` в git не попадает). Пример формата: `tests/fixtures/media_sample.json`.
+2. Убедись, что PostgreSQL запущен и таблицы созданы (`python -m scripts.init_db`).
+3. Сначала проверка, затем импорт (из корня проекта):
 
    ```bash
-   python import_json.py ../data/media.json --dry-run
-   python import_json.py ../data/media.json
+   python -m scripts.import_json data/media.json --dry-run
+   python -m scripts.import_json data/media.json
+   python -m scripts.import_json data/anime.json data/series.json   # несколько файлов сразу
    ```
 
 4. Если скрипт показал ошибки, исправь соответствующие записи в JSON и запусти ещё раз. Уже загруженные записи будут пропущены как дубликаты.
 
-После импорта все записи сразу доступны через `GET /items/` и появятся в **Episodio** со статусом `planned`.
+После импорта все записи сразу доступны через `GET /items/` и появятся в **Episodio** со статусом `planned`. Если в старом файле у записи был прогресс (`season`, `episode`), он попадёт в `current_*`, и статистика учтёт его, даже когда журнал `progress_log` ещё пуст.
 
 ### Шаг 4. Подключение внешних API (обогащение карточек)
 
-После импорта у записей есть названия, категория, жанры, страна и год, но нет постеров, а у книг часто нет автора. Внешние API нужны, чтобы дозаполнить пустые поля, не вбивая их вручную.
+После импорта у записей есть названия, категория, жанры, страна и год, но нет постеров, а у книг часто нет автора. Внешние API дозаполняют пустые поля, не вбивая их вручную. Каждый источник — класс-провайдер в `backend/enrich/` (интерфейс `Provider` из `base.py`), зарегистрированный в `PROVIDER_CLASSES` в `registry.py`.
 
-| Категория | Источник | Что берём |
-|---|---|---|
-| `anime`, `manga` | **Shikimori** (хорошо знает русские названия), **AniList** или **Jikan (MyAnimeList)** | постер, автор манги, жанры, год |
-| `tv_series`, `movie`, `tv_show`, `cartoon` | **TMDB** (бесплатный API-ключ), запасной вариант — **TVMaze** | постер, жанры, страна, год |
-| `book`, `audiobook` | **Open Library** или **Google Books** | обложка, автор, год |
+| Категория | Источник | Что берём | Настройка |
+|---|---|---|---|
+| `tv_series`, `tv_show`, `cartoon`, `movie` | **TMDB** | постер, жанры, страна (у сериалов), год, оценка, общее число серий завершённых сериалов | `TMDB_API_KEY` (бесплатный) |
+| `anime`, `manga` | **Shikimori** (по умолчанию) | постер, жанры по-русски, год, оценка, общее число серий и глав | `SHIKIMORI_USER_AGENT` |
+| `anime`, `manga` | **AniList** (выбирается явно) | постер, жанры (переведены), страна, год, оценка, число серий и глав | не нужна |
+| `book`, `audiobook` | **Open Library** | обложка, автор, год первой публикации | `OPENLIBRARY_USER_AGENT` (необязательно, поднимает лимит) |
 
-#### Принципы
+Запасные варианты из первоначального плана (Jikan, TVMaze, Google Books) не понадобились.
 
-- **Искать по `title_original` + `release_year`.** Теперь эти поля есть в JSON, и это гораздо точнее, чем поиск по русскому названию из старых блокнотов. Если оригинального названия нет, искать по `title_ru`.
-- **Заполнять только пустые поля.** Ручные правки (свой постер, исправленный жанр) никогда не перезаписываются.
-- **Сомнительные совпадения не применять автоматически.** Если API вернуло несколько похожих кандидатов (ремейки, одноимённые фильмы), запись помечается и предлагается выбрать вариант вручную.
-- **Постеры скачивать локально** в `media/posters/{id}.jpg` (см. шаг 1, п. 7) и отдавать через FastAPI `StaticFiles`. В `poster_url` записывать путь `/posters/{id}.jpg`.
-- **Два режима запуска:** пакетный скрипт, который один раз проходит по всем импортированным записям, и автоматический поиск при добавлении нового тайтла через API.
-- **Соблюдать лимиты API:** делать паузы между запросами, а для Shikimori указывать свой `User-Agent`.
+#### Принципы (все выполняются)
 
-> Описание (синопсис) хранится в поле `description` (шаг 1). Провайдеры пока его не заполняют: это можно добавить, когда понадобится показывать синопсис из внешних источников.
+- **Искать по `title_original` + `release_year`**, а если оригинального названия нет, по `title_ru`. Названия сравниваются без учёта регистра, пунктуации и пробелов, год должен совпасть с точностью до ±1.
+- **Заполнять только пустые поля.** Ручные правки (свой постер, исправленный жанр) никогда не перезаписываются. Единственное исключение: `POST /items/{id}/enrich/apply?force=true` заменяет постер (и только его).
+- **Сомнительные совпадения не применять автоматически.** Автоматически применяется только единственный уверенный кандидат; неоднозначные и ненайденные записи попадают в `data/enrich_review.json`, а выбрать вариант вручную можно в интерфейсе (кнопка «Найти данные», вкладка «Требуют проверки» в каталоге) или через `GET /items/{id}/enrich/candidates` и `POST /items/{id}/enrich/apply`.
+- **Постеры скачиваются локально** в `media/posters/{id}.jpg` и отдаются через `StaticFiles`. В `poster_url` записывается путь `/posters/{id}.jpg`. Скачивать можно только с хостов провайдеров.
+- **Несколько способов запуска:** пакетный скрипт `python -m scripts.enrich` (с `--dry-run`, `--category`, `--source`, `--limit`, `--id`), ручной выбор варианта для одной записи и добавление тайтла из каталога (`POST /items/from-catalog`: сервер сам скачивает постер и подгружает жанры и общее число серий или глав).
+- **Соблюдать лимиты API:** паузы между запросами и повтор при 429 и 5xx делает общий клиент (`client.py`). TMDB: не чаще 4 запросов в секунду; Shikimori и AniList: один запрос в 0,7 секунды (лимит 90 в минуту); Open Library: 1 в секунду, с контактом в `OPENLIBRARY_USER_AGENT` до 3. Каждый запрос подписывается `User-Agent`.
+- **Источник по умолчанию и выбор другого.** Категорию обслуживает первый подходящий провайдер в `PROVIDER_CLASSES` (у аниме и манги Shikimori). Другой выбирается параметром `source` в API и опцией `--source` скрипта.
+- **Внешние API в тестах не вызываются.**
 
-### Шаг 5. Разработка Фронтенда (React)
+Кроме обогащения, те же провайдеры дают живой поиск (`GET /catalog/search`) и «популярное» для полок каталога (`GET /catalog/popular`, ответы кэшируются на час).
+
+> Описание (синопсис) хранится в поле `description` (шаг 1). Провайдеры его пока не заполняют: это можно добавить, когда понадобится показывать синопсис из внешних источников.
+
+### Шаг 5. Разработка Фронтенда (Next.js)
+
+**Статус: реализован.** Приложение лежит в `frontend/` (Next.js 16, App Router, TypeScript, Tailwind CSS 4, Framer Motion, Zustand); подробности и устройство: `frontend/README.md`. Данные хранятся в БД на сервере, браузер ходит только в свой Next.js (`/api/backend/*`), а он добавляет ключ и пересылает запрос в FastAPI. Вход по логину и паролю из `.env`.
+
+Что из концепции ниже уже есть:
+
+| Идея концепции | Состояние |
+| --- | --- |
+| Командная палитра Ctrl+K | Есть: навигация, отметка серии, живой поиск и добавление из каталога |
+| «Просмотр на лету» («+» на карточке) | Есть: оптимистичные «+» и «−», пружинная анимация, свайпы по карточкам |
+| Лента активности | Есть: бесконечный скролл по журналу `progress_log` |
+| Mobile-first, жесты, PWA | Есть: манифест, service worker (без кэша API) |
+| Аналитика («Wrapped») | Есть: жанры, страны, годы выхода, топ по сериям, график «Эта неделя» (данные `GET /stats`) |
+| Синхронизация с внешними API | Есть: поиск и популярное по TMDB, Shikimori, AniList, Open Library, добавление одним нажатием, ручное обогащение |
+| Публичные витрины | Есть: управление на экране «Витрина» и публичная страница `/u/<имя>/<адрес>` без входа |
+| Экспорт | Есть: Excel и JSON с сервера, TXT и копия базы в браузере |
+| Две темы и два языка | Есть: Nordic Twilight и Nordic Frost, русский и английский |
+| AI-компаньон | Частично: экран `/ai` отвечает по правилам (`frontend/src/lib/epi.ts`); подключение языковой модели отложено |
+
+Ниже — исходная концепция, на основе которой делался интерфейс.
 
 Чтобы твой сайт выглядел ультрасовременно в 2026 году и вызывал восторг у топовых продуктовых дизайнеров, он должен сочетать **бруталистичный минимализм, высокую функциональность с ИИ и живой, иммерсивный UX**.
 
@@ -732,7 +423,7 @@ if __name__ == "__main__":
 
     **🏆 Топ тайтлов по количеству серий:**
 
-    - Рейтинг сериалов, на которые ты потратил больше всего времени (по количеству залогированных серий суммарно для каждого `title_ru`).
+    - Рейтинг сериалов, на которые ты потратил больше всего времени (по накопленному прогрессу: сумма просмотренных серий или прочитанных глав у тайтла).
 
 - **🔄 Автоматическая синхронизация (Webhooks / API):** Интеграция с внешними публичными API (AniList, MyAnimeList, TMDB) по одному клику: вставил ссылку на тайтл, и сайт сам подтянул синопсис, постер в высоком разрешении, количество серий и статус выхода.
 
@@ -777,3 +468,11 @@ if __name__ == "__main__":
 
 - **Фронтенд:** Next.js (React) + Tailwind CSS + Framer Motion (для тех самых анимаций анимации).
 - **Дизайн-система:** Вдохновляйся сайтами **Vercel, Linear, Raycast, Sentry** и визуальными трендами на **Awwwards / Dribbble** в категории *Dark Mode SaaS / Bento Grid*.
+
+### Шаг 6. Состояние проекта и что дальше
+
+Актуальный статус этапов, контракт API и принятые решения: `docs/roadmap_frontend_v2.md` (с него начинают новую сессию). Коротко:
+
+- Сделано: бэкенд и база, импорт, обогащение и каталог (четыре источника), интерфейс, статистика, публичные витрины, серверный экспорт, резервная копия БД (`python -m scripts.backup`).
+- Отложено: подключение языковой модели к «Эпи» (этап 9).
+- Осталось из этапа 12: единая команда запуска обоих серверов и инструкция для постоянной работы (`next build` + `next start`, `uvicorn` без `--reload`), описание вариантов HTTPS и доступа с телефона (локальная сеть, Tailscale, обратный прокси), без которых публичные витрины не открываются снаружи.

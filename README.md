@@ -444,6 +444,7 @@ pytest tests/test_catalog_api.py tests/test_catalog_popular.py # поиск, п�
 pytest tests/test_stats.py       # статистика
 pytest tests/test_showcases.py   # витрины
 pytest tests/test_export.py      # экспорт в Excel и JSON
+pytest tests/test_docs.py        # docs/plan.md совпадает со schema.sql, requirements.txt и модулями backend
 pytest tests/test_anilist.py     # AniList и выбор источника
 pytest tests/test_import.py      # только импорт
 pytest tests/test_posters.py     # только постеры
@@ -495,6 +496,7 @@ Episodio/
 │   ├── test_stats.py          # GET /stats: распределения, топ, итоги, активность по дням
 │   ├── test_showcases.py      # Витрины: выборка, публичный ответ без приватных полей, постеры
 │   ├── test_export.py         # Экспорт: Excel открывается через openpyxl и сверяется с данными, JSON
+│   ├── test_docs.py           # План проекта не расходится со schema.sql, зависимостями и модулями
 │   ├── test_anilist.py        # AniList, выбор источника в реестре и API (без сети)
 │   ├── test_backup.py         # Резервная копия: ротация, команда без пароля (без базы)
 │   ├── test_import.py  # Тесты импорта JSON
@@ -508,7 +510,7 @@ Episodio/
 ├── media/
 │   └── posters/        # Скачанные постеры (не попадают в git)
 ├── docs/
-│   ├── plan.md         # План разработки
+│   ├── plan.md         # План проекта: схема БД, бэкенд, импорт, источники, концепция фронтенда (актуален)
 │   ├── roadmap_frontend_v2.md # Актуальная дорожная карта: статус этапов, контракт API, решения
 │   └── api-contract.md # Контракт фронтенд ↔ бэкенд и принятые решения (история)
 ├── .env.example            # Шаблон настроек (копируется в .env)
