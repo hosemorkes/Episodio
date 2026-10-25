@@ -13,10 +13,12 @@ import {
   toApiCatalogAdd,
   toApiFields,
   toCatalogResult,
+  toEnrichCandidate,
   toLogEntry,
   toTitle,
   typeFromApi,
   type ApiCatalogResult,
+  type ApiEnrichCandidate,
   type ApiItem,
 } from "./api";
 import { TYPES } from "./rules";
@@ -129,6 +131,43 @@ describe("неизвестная категория", () => {
   it("toCatalogResult не падает на неизвестной категории", () => {
     const r = toCatalogResult(apiResult({ category: "podcast" as ApiCatalogResult["category"] }));
     expect(r.type).toBe("series");
+  });
+});
+
+const apiCandidate = (over: Partial<ApiEnrichCandidate> = {}): ApiEnrichCandidate => ({
+  source: "tmdb",
+  external_id: "1424",
+  title: "Блудливая Калифорния",
+  original_title: "Californication",
+  year: 2007,
+  poster_url: "https://image.tmdb.org/t/p/w500/x.jpg",
+  genres: ["драма", "комедия"],
+  country: "США",
+  author: null,
+  ...over,
+});
+
+describe("обогащение: адаптер", () => {
+  it("toEnrichCandidate: жанры с заглавной, пустые поля — значения интерфейса", () => {
+    expect(toEnrichCandidate(apiCandidate())).toEqual({
+      key: "tmdb:1424",
+      source: "tmdb",
+      extId: "1424",
+      t: "Блудливая Калифорния",
+      en: "Californication",
+      y: 2007,
+      g: ["Драма", "Комедия"],
+      c: "США",
+      author: undefined,
+      img: "https://image.tmdb.org/t/p/w500/x.jpg",
+    });
+    expect(toEnrichCandidate(apiCandidate({ year: null, country: null, poster_url: null, original_title: null, author: "Автор" }))).toMatchObject({
+      y: 0,
+      c: "—",
+      img: undefined,
+      en: undefined,
+      author: "Автор",
+    });
   });
 });
 
@@ -435,6 +474,47 @@ describe("клиент", () => {
   it("addFromCatalog: дубликат — ApiError 409", async () => {
     stub(respond(409, { detail: "Уже в библиотеке: Фрирен" }));
     await expect(api.addFromCatalog(toCatalogResult(apiResult()), "planned")).rejects.toMatchObject({ status: 409, message: "Уже в библиотеке: Фрирен" });
+  });
+
+  it("listCandidates: GET вариантов, ответ в типах интерфейса, таймаут 45 с", async () => {
+    const spy = vi.spyOn(AbortSignal, "timeout");
+    const fn = stub(respond(200, [apiCandidate()]));
+    const list = await api.listCandidates(7);
+    expect(fn.mock.calls[0][0]).toBe("/api/backend/items/7/enrich/candidates");
+    expect(list[0]).toMatchObject({ source: "tmdb", extId: "1424", g: ["Драма", "Комедия"] });
+    expect(spy).toHaveBeenCalledWith(45_000);
+    spy.mockRestore();
+  });
+
+  it("applyCandidate: POST с источником и внешним id, без force по умолчанию", async () => {
+    const fn = stub(respond(200, { item: apiItem({ poster_url: "/posters/7.jpg" }), changed: ["poster_url", "genres"] }));
+    const r = await api.applyCandidate(7, "tmdb", "1424");
+    const [url, init] = fn.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("/api/backend/items/7/enrich/apply");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body as string)).toEqual({ source: "tmdb", external_id: "1424" });
+    expect(r.changed).toEqual(["poster_url", "genres"]);
+    expect(r.item.img).toBe("/api/backend/posters/7.jpg");
+  });
+
+  it("applyCandidate: force=true уходит в адрес запроса", async () => {
+    const fn = stub(respond(200, { item: apiItem(), changed: [] }));
+    await api.applyCandidate(7, "tmdb", "1424", true);
+    expect(fn.mock.calls[0][0]).toBe("/api/backend/items/7/enrich/apply?force=true");
+  });
+
+  it("обогащение: коды 400, 404, 502, 503 становятся ApiError с текстом сервера", async () => {
+    const cases: [number, string][] = [
+      [400, "Категория не поддерживается"],
+      [404, "Кандидат не найден"],
+      [502, "Внешний сервис недоступен"],
+      [503, "Обогащение недоступно: нет ключа"],
+    ];
+    for (const [status, detail] of cases) {
+      stub(respond(status, { detail }));
+      await expect(api.applyCandidate(7, "tmdb", "1")).rejects.toMatchObject({ status, message: detail });
+      await expect(api.listCandidates(7)).rejects.toMatchObject({ status, message: detail });
+    }
   });
 
   it("deleteItem принимает 204", async () => {

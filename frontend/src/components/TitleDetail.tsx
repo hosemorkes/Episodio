@@ -1,13 +1,14 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useLang, useT } from "@/lib/i18n";
 import { altName, displayName, hasSeasons, initials, isReading, pct, posterBg, STATUSES, statusLabel, typeName, unitOf } from "@/lib/rules";
 import { useStore } from "@/lib/store";
-import { Pill, PrimaryButton, Skeleton } from "./ui";
+import { EnrichModal } from "./EnrichModal";
+import { GhostButton, Pill, PrimaryButton, Skeleton } from "./ui";
 
 const card = "flex flex-col gap-3.5 rounded-[22px] border border-line bg-glass p-5 shadow-card backdrop-blur-[14px]";
 
@@ -18,6 +19,7 @@ export function TitleDetail() {
   const lang = useLang();
   const { items, hydrated, pulse, mark, minus, setStatus, setRate } = useStore();
   const it = items.find((x) => x.id === Number(id));
+  const [enrichOpen, setEnrichOpen] = useState(false);
 
   const back = () => (window.history.length > 1 ? router.back() : router.push("/"));
 
@@ -70,10 +72,14 @@ export function TitleDetail() {
         <button type="button" onClick={back} className="flex h-11 items-center rounded-[14px] border border-slate-400/20 bg-glass px-[18px] font-display text-sm font-semibold transition-colors hover:border-acc">
           {t("← Назад")}
         </button>
-        <Link href={`/title/${it.id}/edit`} aria-label={t("Редактировать")} className="flex h-11 items-center rounded-[14px] border border-slate-400/25 px-[18px] font-display text-sm font-semibold text-fg no-underline transition-colors hover:border-acc hover:text-fg">
-          {t("✎ Редактировать")}
-        </Link>
+        <div className="flex gap-2">
+          <GhostButton onClick={() => setEnrichOpen(true)}>{t("Найти данные")}</GhostButton>
+          <Link href={`/title/${it.id}/edit`} aria-label={t("Редактировать")} className="flex h-11 items-center rounded-[14px] border border-slate-400/25 px-[18px] font-display text-sm font-semibold text-fg no-underline transition-colors hover:border-acc hover:text-fg">
+            {t("✎ Редактировать")}
+          </Link>
+        </div>
       </div>
+      <AnimatePresence>{enrichOpen && <EnrichModal id={it.id} onClose={() => setEnrichOpen(false)} />}</AnimatePresence>
 
       <div className="flex flex-wrap items-start gap-6">
         <div

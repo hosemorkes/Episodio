@@ -3,10 +3,12 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import { CatalogCard, HeroBanner, SearchCard } from "@/components/CatalogCard";
+import { ReviewList } from "@/components/ReviewList";
 import { PageHeader } from "@/components/PageHeader";
 import { TitleCard } from "@/components/TitleCard";
 import { Pill, Pills, PrimaryButton, Skeleton } from "@/components/ui";
 import { CATALOG } from "@/lib/catalog-data";
+import { needsReview } from "@/lib/enrich";
 import { useLang, useT } from "@/lib/i18n";
 import { useCatalogSearch } from "@/lib/useCatalogSearch";
 import { ALL_GENRES, findMine, genreCounts, recommend, STATUSES, statusLabel, TYPES, TYPES_PLURAL } from "@/lib/rules";
@@ -36,7 +38,7 @@ export default function CatalogPage() {
   const t = useT();
   const lang = useLang();
   const { items, hydrated } = useStore();
-  const [view, setView] = useState<"discover" | "mine">("discover");
+  const [view, setView] = useState<"discover" | "mine" | "review">("discover");
   const [tfilter, setTfilter] = useState<TypeFilter>("all");
   const [cq, setCq] = useState("");
   const [sugOpen, setSugOpen] = useState(false);
@@ -94,6 +96,7 @@ export default function CatalogPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [list, items, lang]);
 
+  const reviewCount = useMemo(() => items.filter(needsReview).length, [items]);
   const mine = items.filter((x) => (cfilter === "all" || x.st === cfilter) && (tfilter === "all" || x.type === tfilter));
 
   const toggleGenre = (g: string) => setFGenres((p) => (p.includes(g) ? p.filter((x) => x !== g) : [...p, g]));
@@ -117,7 +120,7 @@ export default function CatalogPage() {
     <>
       <PageHeader kicker={t("Все тайтлы")} title={t("Каталог")} />
       <Pills
-        items={[["discover", t("Обзор")], ["mine", t("Моя библиотека")]] as ["discover" | "mine", string][]}
+        items={[["discover", t("Обзор")], ["mine", t("Моя библиотека")], ["review", t("Требуют проверки") + (reviewCount ? ` · ${reviewCount}` : "")]] as ["discover" | "mine" | "review", string][]}
         value={view}
         onChange={(v) => { setView(v); setTfilter("all"); }}
       />
@@ -291,6 +294,11 @@ export default function CatalogPage() {
             </>
           )}
         </div>
+      ) : view === "review" ? (
+        <>
+          <Pills items={[["all", t("Все")], ...TYPES.map(([k, n]) => [k, t(n)] as [TypeFilter, string])]} value={tfilter} onChange={setTfilter} />
+          <ReviewList type={tfilter} />
+        </>
       ) : (
         <>
           <div className="flex items-baseline justify-between gap-3">

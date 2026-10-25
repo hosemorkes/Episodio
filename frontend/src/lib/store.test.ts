@@ -12,7 +12,7 @@ vi.hoisted(() => {
 
 vi.mock("./api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./api")>();
-  const names = ["listItems", "getItem", "createItem", "updateItem", "patchItem", "deleteItem", "progress", "listLog", "listGenres", "searchCatalog", "addFromCatalog", "uploadPoster", "deletePoster"];
+  const names = ["listItems", "getItem", "createItem", "updateItem", "patchItem", "deleteItem", "progress", "listLog", "listGenres", "searchCatalog", "addFromCatalog", "uploadPoster", "deletePoster", "listCandidates", "applyCandidate"];
   return { ...actual, api: Object.fromEntries(names.map((n) => [n, vi.fn()])) };
 });
 
@@ -542,5 +542,38 @@ describe("load и лента", () => {
     reset([], [{ day: "СЕГОДНЯ", title: "X", ep: 1, time: "10:00" }]);
     await state().loadMoreLog();
     expect(m.listLog).not.toHaveBeenCalled();
+  });
+});
+
+describe("ручное обогащение", () => {
+  const cand = { key: "tmdb:1", source: "tmdb", extId: "1", t: "Медведь", y: 2022, g: ["Драма"], c: "США" };
+
+  it("enrichCandidates отдаёт варианты как есть", async () => {
+    reset([title()]);
+    m.listCandidates.mockResolvedValue([cand]);
+    expect(await state().enrichCandidates(1)).toEqual([cand]);
+    expect(m.listCandidates).toHaveBeenCalledWith(1);
+  });
+
+  it("enrichApply обновляет карточку в библиотеке и возвращает заполненные поля", async () => {
+    reset([title({ img: undefined, g: [] })]);
+    m.applyCandidate.mockResolvedValue({ item: title({ img: "/api/backend/posters/1.jpg", g: ["Драма"] }), changed: ["poster_url", "genres"] });
+    expect(await state().enrichApply(1, cand, false)).toEqual(["poster_url", "genres"]);
+    expect(m.applyCandidate).toHaveBeenCalledWith(1, "tmdb", "1", false);
+    expect(item()).toMatchObject({ img: "/api/backend/posters/1.jpg", g: ["Драма"] });
+  });
+
+  it("«Заменить постер» передаёт force", async () => {
+    reset([title()]);
+    m.applyCandidate.mockResolvedValue({ item: title(), changed: [] });
+    await state().enrichApply(1, cand, true);
+    expect(m.applyCandidate).toHaveBeenCalledWith(1, "tmdb", "1", true);
+  });
+
+  it("ошибка сервера уходит наверх, карточка не меняется", async () => {
+    reset([title({ img: undefined })]);
+    m.applyCandidate.mockRejectedValue(new ApiError(502, "Внешний сервис недоступен"));
+    await expect(state().enrichApply(1, cand, false)).rejects.toMatchObject({ status: 502 });
+    expect(item().img).toBeUndefined();
   });
 });

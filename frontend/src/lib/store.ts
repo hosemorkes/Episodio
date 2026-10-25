@@ -5,7 +5,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { api, ApiError, CATEGORY_TO_API } from "./api";
 import { translate } from "./i18n-core";
 import { fixSt, hasSeasons, isReading, parseBackup, statusPatch, unitOf } from "./rules";
-import type { CatalogItem, CatalogResult, Lang, LogEntry, Theme, Title, TitleStatus, TitleType } from "./types";
+import type { CatalogItem, CatalogResult, EnrichCandidate, Lang, LogEntry, Theme, Title, TitleStatus, TitleType } from "./types";
 
 export interface TitleDraft {
   id: number | null;
@@ -65,6 +65,10 @@ interface State {
   deleteTitle: (id: number) => void;
   addFromCatalog: (c: CatalogItem, st: TitleStatus) => Promise<void>;
   addFromSearch: (r: CatalogResult, st: TitleStatus) => Promise<boolean>;
+  /** Варианты обогащения из внешнего источника; ошибки бросаются наверх, окно показывает их само */
+  enrichCandidates: (id: number) => Promise<EnrichCandidate[]>;
+  /** Применяет вариант к карточке и обновляет её в библиотеке; возвращает заполненные поля БД */
+  enrichApply: (id: number, c: EnrichCandidate, replacePoster: boolean) => Promise<string[]>;
   restore: (data: unknown) => Promise<boolean>;
   markBackup: () => void;
 }
@@ -432,6 +436,28 @@ export const useStore = create<State>()(
           } catch (e) {
             fail(e); // 409 «Уже в библиотеке» тоже приходит сюда с понятным текстом
             return false;
+          }
+        },
+        enrichCandidates: async (id) => {
+          try {
+            return await api.listCandidates(id);
+          } catch (e) {
+            if (e instanceof ApiError && e.status === 401) fail(e);
+            throw e;
+          }
+        },
+        enrichApply: async (id, c, replacePoster) => {
+          try {
+            // в очереди тайтла: ответ сервера не обгонит более ранние правки (+1, статус)
+            const { changed } = await enqueue(id, async () => {
+              const r = await api.applyCandidate(id, c.source, c.extId, replacePoster);
+              if (isLastInQueue(id)) replaceItem(r.item);
+              return r;
+            });
+            return changed;
+          } catch (e) {
+            if (e instanceof ApiError && e.status === 401) fail(e);
+            throw e;
           }
         },
         /** Загружает записи из файла копии на сервер; уже существующие (то же название и тип) пропускает */

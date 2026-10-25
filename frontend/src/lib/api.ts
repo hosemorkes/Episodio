@@ -4,7 +4,7 @@
  * откуда запрос уходит в FastAPI вместе с X-API-Key. Компоненты сюда напрямую не обращаются.
  */
 import { hasSeasons, isReading } from "./rules";
-import type { CatalogResult, LogEntry, LogUnit, Title, TitleStatus, TitleType } from "./types";
+import type { CatalogResult, EnrichCandidate, LogEntry, LogUnit, Title, TitleStatus, TitleType } from "./types";
 
 // ---------- Форма данных бэкенда (backend/schemas.py) ----------
 
@@ -229,6 +229,41 @@ export function toApiCatalogAdd(r: CatalogResult, st: TitleStatus) {
   };
 }
 
+// ---------- Ручное обогащение ----------
+
+export interface ApiEnrichCandidate {
+  source: string;
+  external_id: string;
+  title: string;
+  original_title: string | null;
+  year: number | null;
+  poster_url: string | null;
+  genres: string[];
+  country: string | null;
+  author: string | null;
+}
+
+export interface ApiEnrichApply {
+  item: ApiItem;
+  /** поля БД, которые были заполнены (poster_url, genres, country, release_year, author) */
+  changed: string[];
+}
+
+export function toEnrichCandidate(a: ApiEnrichCandidate): EnrichCandidate {
+  return {
+    key: `${a.source}:${a.external_id}`,
+    source: a.source,
+    extId: a.external_id,
+    t: a.title,
+    en: a.original_title ?? undefined,
+    y: a.year ?? 0,
+    g: a.genres.map(capitalize),
+    c: a.country ?? "—",
+    author: a.author ?? undefined,
+    img: a.poster_url ?? undefined,
+  };
+}
+
 // ---------- Журнал ----------
 
 /** Подпись дня для ленты: СЕГОДНЯ, ВЧЕРА, «N ДНЯ/ДНЕЙ НАЗАД» (до недели), дальше дата «12 ОКТ» */
@@ -284,6 +319,9 @@ export function errorMessage(body: unknown, status: number): string {
 /** Сколько ждём ответ: обычный запрос и загрузка файла */
 const TIMEOUT_MS = 15_000;
 const UPLOAD_TIMEOUT_MS = 60_000;
+
+/** Поиск вариантов и применение идут во внешние API (с паузами между запросами), поэтому ждём дольше */
+const ENRICH_TIMEOUT_MS = 45_000;
 
 /** Записей за один запрос при загрузке библиотеки (максимум бэкенда — 500) */
 export const ITEMS_PAGE = 200;
@@ -355,6 +393,19 @@ export const api = {
   /** Добавляет найденный тайтл в библиотеку (сервер сам скачает постер); дубликат — ApiError 409 */
   addFromCatalog: async (r: CatalogResult, st: TitleStatus): Promise<Title> =>
     toTitle(await call<ApiItem>("/items/from-catalog", json("POST", toApiCatalogAdd(r, st)))),
+
+  /** Варианты из внешнего источника для карточки; ничего не сохраняет */
+  listCandidates: async (id: number): Promise<EnrichCandidate[]> =>
+    (await call<ApiEnrichCandidate[]>(`/items/${id}/enrich/candidates`, undefined, ENRICH_TIMEOUT_MS)).map(toEnrichCandidate),
+  /** Применяет вариант: заполняются пустые поля; force заменяет ещё и постер. changed — заполненные поля БД */
+  applyCandidate: async (id: number, source: string, externalId: string, force = false): Promise<{ item: Title; changed: string[] }> => {
+    const r = await call<ApiEnrichApply>(
+      `/items/${id}/enrich/apply${force ? "?force=true" : ""}`,
+      json("POST", { source, external_id: externalId }),
+      ENRICH_TIMEOUT_MS,
+    );
+    return { item: toTitle(r.item), changed: r.changed };
+  },
 
   uploadPoster: async (id: number, file: File): Promise<Title> => {
     const form = new FormData();

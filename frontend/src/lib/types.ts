@@ -79,6 +79,22 @@ export interface CatalogResult {
   img?: string;
 }
 
+/** Вариант из внешнего API для ручного обогащения карточки (GET /items/{id}/enrich/candidates) */
+export interface EnrichCandidate {
+  /** источник:внешний id — уникальный ключ в списке */
+  key: string;
+  source: string;
+  extId: string;
+  t: string;
+  en?: string;
+  y: number;
+  g: string[];
+  c: string;
+  author?: string;
+  /** внешний URL постера */
+  img?: string;
+}
+
 export type LogUnit = "ep" | "ch" | "film";
 
 export interface LogEntry {
