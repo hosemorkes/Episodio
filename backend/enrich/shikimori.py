@@ -63,13 +63,22 @@ class ShikimoriProvider:
                 return [self._to_candidate(kind, result) for result in results]
         return []
 
+    def popular(self, category: str, limit: int) -> list[Candidate]:
+        """Самое популярное (порядок popularity), у манги и аниме отдельные списки."""
+        resource, kind = RESOURCES[category]
+        results = self._get(f"/api/{resource}", {"order": "popularity", "limit": min(limit, 50)})
+        return [self._to_candidate(kind, result) for result in results]
+
     def fill_details(self, candidate: Candidate) -> Candidate:
-        """Жанры по-русски в нижнем регистре: в списке результатов их нет, они приходят с карточкой."""
+        """Жанры по-русски в нижнем регистре и общее число серий или глав: в списке результатов их нет, они приходят с карточкой."""
         kind, _, shiki_id = candidate.external_id.partition(":")
         resource = next(res for res, k in RESOURCES.values() if k == kind)
         data = self._get(f"/api/{resource}/{shiki_id}")
         names = [(g.get("russian") or g.get("name") or "").lower() for g in data.get("genres", [])]
-        return replace(candidate, genres=[name for name in names if name])
+        # 0 — число неизвестно (идущий тайтл): в базе это NULL, а не «всего 0»
+        total = data.get("episodes" if kind == "anime" else "chapters") or None
+        details = {"total_episodes": total} if kind == "anime" else {"total_chapters": total}
+        return replace(candidate, genres=[name for name in names if name], **details)
 
     # --- разбор ответа ---
 
@@ -93,4 +102,13 @@ class ShikimoriProvider:
             original_title=result.get("name") or None,
             year=self._year(result.get("aired_on")),
             poster_url=self._poster(result.get("image")),
+            rating=self._score(result.get("score")),
         )
+
+    @staticmethod
+    def _score(value) -> Optional[float]:
+        try:
+            score = float(value)
+        except (TypeError, ValueError):
+            return None
+        return score if score > 0 else None  # 0.0 — оценок ещё нет

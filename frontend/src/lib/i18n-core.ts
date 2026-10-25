@@ -67,6 +67,10 @@ const EXTRA: Record<string, string> = {
   "Добавьте первый тайтл, и здесь появятся жанры, страны и годы выхода.": "Add your first title and genres, countries and release years will show up here.",
   "Пока нет отмеченных серий и глав.": "No episodes or chapters marked yet.",
   "Прочитано глав: ": "Chapters read: ",
+  // Живая подборка и палитра (этап 8)
+  "Что смотрят и читают прямо сейчас": "What people are watching and reading right now",
+  "Живая подборка недоступна, показана базовая: ": "Live picks are unavailable, showing the basic selection: ",
+  "Добавить: ": "Add: ",
   // Ручное обогащение (этап 6)
   "Найти данные": "Find data",
   "НАЙТИ ДАННЫЕ": "FIND DATA",

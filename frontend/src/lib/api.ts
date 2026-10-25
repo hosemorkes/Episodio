@@ -189,6 +189,7 @@ export interface ApiCatalogResult {
   genres: string[];
   country: string | null;
   author: string | null;
+  rating?: number | null;
 }
 
 export interface ApiCatalogSearch {
@@ -209,6 +210,7 @@ export function toCatalogResult(a: ApiCatalogResult): CatalogResult {
     c: a.country ?? "—",
     author: a.author ?? undefined,
     img: a.poster_url ?? undefined,
+    rating: a.rating ?? undefined,
   };
 }
 
@@ -429,6 +431,14 @@ export const api = {
     if (type) params.set("category", CATEGORY_TO_API[type]);
     if (limit) params.set("limit", String(limit));
     const r = await call<ApiCatalogSearch>(`/catalog/search?${params}`);
+    return { results: r.results.map(toCatalogResult), errors: r.errors };
+  },
+  /** Популярное для полок «Обзора»; без type — по основным категориям. errors — недоступные источники */
+  popularCatalog: async (type?: TitleType, limit?: number): Promise<{ results: CatalogResult[]; errors: string[] }> => {
+    const params = new URLSearchParams();
+    if (type) params.set("category", CATEGORY_TO_API[type]);
+    if (limit) params.set("limit", String(limit));
+    const r = await call<ApiCatalogSearch>(`/catalog/popular${params.size ? `?${params}` : ""}`, undefined, ENRICH_TIMEOUT_MS);
     return { results: r.results.map(toCatalogResult), errors: r.errors };
   },
   /** Добавляет найденный тайтл в библиотеку (сервер сам скачает постер); дубликат — ApiError 409 */

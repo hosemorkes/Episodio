@@ -1,7 +1,7 @@
 import os
 import secrets
 from contextlib import asynccontextmanager
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import date
 from typing import Literal, Optional
 
@@ -366,6 +366,26 @@ def search_in_catalog(
     return CatalogSearchResponse(results=results, errors=errors)
 
 
+# 7а-2. Популярное для полок «Обзора». Без category — по основным категориям; ответы кэшируются на час
+@app.get("/catalog/popular", response_model=CatalogSearchResponse)
+def popular_in_catalog(
+    category: Optional[Category] = None,
+    limit: int = Query(12, ge=1, le=30, description="Сколько результатов брать из каждой категории"),
+    enricher: Enricher = Depends(get_enricher),
+):
+    categories = (category,) if category else catalog.DEFAULT_CATEGORIES
+    results, errors, failure = catalog.popular_catalog(
+        enricher,
+        categories,
+        limit,
+        errors_to_catch=EXTERNAL_ERRORS,
+        describe=lambda e: str(enrich_error(e).detail),
+    )
+    if failure is not None:
+        raise enrich_error(failure) from failure
+    return CatalogSearchResponse(results=results, errors=errors)
+
+
 # 7б. Добавить найденный тайтл в библиотеку; постер скачивается в media/posters, если источник его отдаёт
 @app.post("/items/from-catalog", response_model=MediaItemResponse, status_code=status.HTTP_201_CREATED)
 def add_from_catalog(body: CatalogAddRequest, db: Session = Depends(get_db), enricher: Enricher = Depends(get_enricher)):
@@ -397,13 +417,17 @@ def add_from_catalog(body: CatalogAddRequest, db: Session = Depends(get_db), enr
     candidate = Candidate(
         source=body.source, external_id=body.external_id, title=title_ru, original_title=original, year=body.year,
         poster_url=body.poster_url, genres=body.genres, country=body.country, author=body.author,
+        category=body.category,
     )
     fill_details = getattr(provider, "fill_details", None)
-    if fill_details and is_empty(candidate.genres):
+    if fill_details:
+        given_genres = candidate.genres
         try:
-            candidate = fill_details(candidate)  # у Shikimori жанры приходят только с карточкой
+            # У Shikimori жанры приходят только с карточкой; у обоих источников там же общее число серий или глав
+            detailed = fill_details(candidate)
+            candidate = replace(detailed, genres=given_genres or detailed.genres)  # присланные жанры не заменяем
         except EXTERNAL_ERRORS:
-            pass  # без жанров добавить можно, их дозаполнит обогащение
+            pass  # без жанров и итогов добавить можно, жанры дозаполнит обогащение
 
     db_item = MediaItem(
         title_ru=candidate.title,
@@ -413,6 +437,8 @@ def add_from_catalog(body: CatalogAddRequest, db: Session = Depends(get_db), enr
         author=candidate.author,
         country=candidate.country,
         release_year=candidate.year,
+        total_episodes=candidate.total_episodes,
+        total_chapters=candidate.total_chapters,
         status=body.status,
     )
     db.add(db_item)

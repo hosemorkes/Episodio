@@ -1,0 +1,9 @@
+{
+  "query": "/trending/weekly",
+  "works": [
+    {"key": "/works/OL17930368W", "title": "Atomic Habits", "author_name": ["James Clear"], "first_publish_year": 2016, "cover_i": 12539702},
+    {"key": "/works/OL1W", "title": "Без обложки", "author_name": [], "first_publish_year": null},
+    {"title": "Без ключа"},
+    {"key": "/works/OL2W", "title": ""}
+  ]
+}

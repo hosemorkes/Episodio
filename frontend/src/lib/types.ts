@@ -77,6 +77,8 @@ export interface CatalogResult {
   author?: string;
   /** внешний URL постера (после добавления сервер скачивает его в свою папку) */
   img?: string;
+  /** оценка источника по 10-балльной шкале; нет у части источников */
+  rating?: number;
 }
 
 /** Вариант из внешнего API для ручного обогащения карточки (GET /items/{id}/enrich/candidates) */

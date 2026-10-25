@@ -338,6 +338,11 @@ describe("каталог: адаптеры", () => {
       img: "https://shikimori.io/system/animes/original/52991.jpg",
     });
   });
+  it("оценка источника: число или пусто", () => {
+    expect(toCatalogResult(apiResult({ rating: 8.6 })).rating).toBe(8.6);
+    expect(toCatalogResult(apiResult({ rating: null })).rating).toBeUndefined();
+    expect(toCatalogResult(apiResult()).rating).toBeUndefined();
+  });
   it("tv_series → series, tv_show → show; без года и постера", () => {
     expect(toCatalogResult(apiResult({ category: "tv_series", year: null, poster_url: null })).type).toBe("series");
     expect(toCatalogResult(apiResult({ category: "tv_show" })).type).toBe("show");
@@ -576,6 +581,22 @@ describe("клиент", () => {
   it("getStats: ошибка периода 422 приходит с текстом сервера", async () => {
     stub(respond(422, { detail: "Начало периода позже его конца" }));
     await expect(api.getStats({ from: "2026-10-25", to: "2026-10-19" })).rejects.toMatchObject({ status: 422, message: "Начало периода позже его конца" });
+  });
+
+  it("popularCatalog: категория и лимит в запросе, ответ в типах интерфейса", async () => {
+    const fn = stub(respond(200, { results: [{ ...apiResult({ category: "tv_series", rating: 8.1 }) }], errors: ["TMDB недоступен"] }));
+    const r = await api.popularCatalog("series", 12);
+    expect(fn.mock.calls[0][0]).toBe("/api/backend/catalog/popular?category=tv_series&limit=12");
+    expect(r.results[0]).toMatchObject({ type: "series", rating: 8.1 });
+    expect(r.errors).toEqual(["TMDB недоступен"]);
+  });
+
+  it("popularCatalog без типа не шлёт category; 503 приходит с текстом сервера", async () => {
+    const fn = stub(respond(200, { results: [], errors: [] }));
+    await api.popularCatalog();
+    expect(fn.mock.calls[0][0]).toBe("/api/backend/catalog/popular");
+    stub(respond(503, { detail: "Не задан TMDB_API_KEY" }));
+    await expect(api.popularCatalog("movie")).rejects.toMatchObject({ status: 503, message: "Не задан TMDB_API_KEY" });
   });
 
   it("deleteItem принимает 204", async () => {

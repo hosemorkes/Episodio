@@ -14,6 +14,7 @@ from backend.enrich.base import Candidate, search_queries
 from backend.enrich.client import USER_AGENT, HttpFetcher
 
 SEARCH_URL = "https://openlibrary.org/search.json"
+TRENDING_URL = "https://openlibrary.org/trending/weekly.json"
 COVER_URL = "https://covers.openlibrary.org/b/id/{cover_id}-L.jpg?default=false"  # без обложки — 404, а не пустая картинка
 FIELDS = "key,title,author_name,first_publish_year,cover_i"
 RESULTS_LIMIT = 10
@@ -50,6 +51,11 @@ class OpenLibraryProvider:
             if docs:
                 return [self._to_candidate(doc) for doc in docs]
         return []
+
+    def popular(self, category: str, limit: int) -> list[Candidate]:
+        """Книги, которые читают на этой неделе (общий список: аудиокниги отдельно Open Library не выделяет)."""
+        docs = self.fetcher.get(TRENDING_URL, params={"limit": limit}).json().get("works", [])
+        return [self._to_candidate(doc) for doc in docs[:limit] if doc.get("key") and doc.get("title")]
 
     @staticmethod
     def _to_candidate(doc: dict) -> Candidate:

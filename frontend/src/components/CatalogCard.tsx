@@ -135,6 +135,49 @@ export function HeroBanner({ c, index, menuKey, openMenu, setOpenMenu }: { c: Ca
   );
 }
 
+/** Крупный баннер живой подборки: внешний постер, оценка источника, добавление в библиотеку */
+export function SearchHero({ r, index, menuKey, openMenu, setOpenMenu }: { r: CatalogResult; index: number; menuKey: string; openMenu: string | null; setOpenMenu: (k: string | null) => void }) {
+  const t = useT();
+  const lang = useLang();
+  const router = useRouter();
+  const mine = useStore((s) => findMine(s.items, r));
+  const addFromSearch = useStore((s) => s.addFromSearch);
+  const btn = addButtonProps(mine, t);
+  const open = openMenu === menuKey;
+  const act = () => (mine ? router.push(`/title/${mine.id}`) : setOpenMenu(open ? null : menuKey));
+  const badge = index === 0 ? t("Топ недели") : r.y >= new Date().getFullYear() - 1 ? t("Новинка сезона") : t("Популярное");
+  const hue = catalogBg(hueOfKey(r.key));
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={act}
+      onKeyDown={(e) => e.key === "Enter" && act()}
+      style={{ background: `linear-gradient(to top,rgba(2,6,23,.85),rgba(2,6,23,.05) 70%),${r.img ? `url("${r.img}") center 20%/cover, ${hue}` : hue}` }}
+      className="relative flex h-60 w-[min(580px,88%)] flex-none cursor-pointer snap-start flex-col justify-end gap-2 overflow-hidden rounded-[26px] p-[22px] text-slate-100 shadow-card"
+    >
+      <span className="self-start rounded-full bg-[rgba(2,6,23,.55)] px-3 py-1 font-display text-xs font-semibold tracking-[.06em] text-[#2DD4BF] backdrop-blur-[8px]">{badge}</span>
+      <div className="font-display text-[28px] font-bold tracking-[-.03em]">{lang === "en" && r.en ? r.en : r.t}</div>
+      <div className="text-sm text-slate-300">
+        {[typeName(r.type, t), r.y || "", r.g.slice(0, 2).map(t).join(", ")].filter(Boolean).join(" · ")}
+      </div>
+      <div className="flex items-center gap-3.5">
+        {r.rating ? <span className="font-display text-base font-semibold text-amber-400">★ {r.rating.toFixed(1)}</span> : null}
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); act(); }}
+          style={{ background: btn.bg, color: btn.fg }}
+          className="flex h-11 items-center rounded-[14px] px-5 font-display text-sm font-semibold hover:shadow-[0_0_22px_rgba(45,212,191,.5)]"
+        >
+          {btn.label}
+        </button>
+      </div>
+      <AnimatePresence>{open && <AddMenu type={r.type} onPick={(st) => void addFromSearch(r, st)} onClose={() => setOpenMenu(null)} className="bottom-[84px] left-[22px] min-w-[200px]" />}</AnimatePresence>
+    </div>
+  );
+}
+
 /** Названия источников для бейджа на карточке результата поиска */
 const SOURCE_LABEL: Record<string, string> = { tmdb: "TMDB", shikimori: "Shikimori", openlibrary: "Open Library" };
 
@@ -183,6 +226,11 @@ export function SearchCard({ r, menuKey, openMenu, setOpenMenu }: { r: CatalogRe
       </motion.div>
       <div className="font-display text-[15px] leading-tight font-semibold">{name}</div>
       {alt && <div className="truncate text-xs text-fg2">{alt}</div>}
+      {r.rating ? (
+        <div className="font-display text-[13px] font-semibold">
+          <span className="text-star">★</span> {r.rating.toFixed(1)}
+        </div>
+      ) : null}
       <div className="text-xs text-muted">
         {typeName(r.type, t)}
         {r.y ? ` · ${r.y}` : ""}

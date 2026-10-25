@@ -25,6 +25,16 @@ def no_api_key(monkeypatch):
     monkeypatch.delenv("API_KEY", raising=False)
 
 
+@pytest.fixture(autouse=True)
+def clean_popular_cache():
+    """Кэш популярного (час) общий для процесса: между тестами его нужно сбрасывать."""
+    from backend import catalog
+
+    catalog.clear_popular_cache()
+    yield
+    catalog.clear_popular_cache()
+
+
 @pytest.fixture(scope="session")
 def test_engine():
     """Движок тестовой базы; в начале сессии применяет к ней scripts/schema.sql."""

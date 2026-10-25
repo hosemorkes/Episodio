@@ -18,6 +18,12 @@ class Candidate:
     genres: list[str] = field(default_factory=list)
     country: Optional[str] = None
     author: Optional[str] = None
+    rating: Optional[float] = None  # оценка источника по 10-балльной шкале, если он её отдаёт
+    total_episodes: Optional[int] = None  # заполняет fill_details, если источник знает общее число серий
+    total_chapters: Optional[int] = None
+    # Категория записи, для которой ищут кандидата. Нужна там, где id не определяет тип (у TMDB id фильма и сериала
+    # пересекаются); поиск её не заполняет, её передаёт код добавления из каталога
+    category: Optional[str] = None
 
 
 class ProviderError(RuntimeError):
@@ -40,8 +46,11 @@ class Provider(Protocol):
     """Источник данных (TMDB, Shikimori, Open Library...).
 
     Необязательный метод fill_details(candidate) -> Candidate дополняет единственного выбранного кандидата
-    данными, которых нет в результатах поиска (например, жанрами). Он вызывается только после выбора
-    совпадения, поэтому не умножает число запросов на каждого кандидата.
+    данными, которых нет в результатах поиска (например, жанрами и общим числом серий или глав). Он вызывается
+    только после выбора совпадения, поэтому не умножает число запросов на каждого кандидата.
+
+    Необязательный метод popular(category, limit) -> list[Candidate] возвращает популярное по категории
+    (для полок каталога).
     """
 
     source: str

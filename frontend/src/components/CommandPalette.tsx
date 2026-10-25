@@ -6,6 +6,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useT } from "@/lib/i18n";
 import { displayName } from "@/lib/rules";
 import { useStore } from "@/lib/store";
+import { typeName } from "@/lib/rules";
+import { useCatalogSearch } from "@/lib/useCatalogSearch";
 
 interface Result {
   label: string;
@@ -32,11 +34,14 @@ export function CommandPalette() {
   const items = useStore((s) => s.items);
   const lang = useStore((s) => s.lang);
   const mark = useStore((s) => s.mark);
+  const addFromSearch = useStore((s) => s.addFromSearch);
   const t = useT();
   const router = useRouter();
   const [q, setQ] = useState("");
   const [sel, setSel] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  // «Добавить тайтл»: по запросу ищем во внешних каталогах и добавляем выбранный результат
+  const live = useCatalogSearch(q, "all", open);
 
   useEffect(() => {
     if (open) {
@@ -72,8 +77,21 @@ export function CommandPalette() {
         out.push({ label: t("Редактировать: ") + displayName(it, lang), kind: t("Правка"), run: go(`/title/${it.id}/edit`) });
       });
     }
-    return out.slice(0, 8);
-  }, [q, items, lang, t, mark, router, setOpen]);
+    const rows = out.slice(0, 8);
+    if (live.busy) rows.push({ label: t("Ищем в каталогах…"), kind: "", run: () => {} });
+    live.results.slice(0, 5).forEach((r) => {
+      const name = lang === "en" && r.en ? r.en : r.t;
+      rows.push({
+        label: `${t("Добавить: ")}${name}${r.y ? ` (${r.y})` : ""}`,
+        kind: typeName(r.type, t),
+        run: () => {
+          close();
+          void addFromSearch(r, "planned");
+        },
+      });
+    });
+    return rows;
+  }, [q, items, lang, t, mark, router, setOpen, live.busy, live.results, addFromSearch]);
 
   const onKey = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") results[sel]?.run();

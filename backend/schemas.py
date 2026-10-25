@@ -190,6 +190,7 @@ class CatalogResult(BaseModel):
     genres: list[str] = []
     country: Optional[str] = None
     author: Optional[str] = None
+    rating: Optional[float] = None  # оценка источника по 10-балльной шкале (есть не у всех)
 
 
 class CatalogSearchResponse(BaseModel):

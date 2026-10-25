@@ -2,14 +2,16 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useMemo, useState } from "react";
-import { CatalogCard, HeroBanner, SearchCard } from "@/components/CatalogCard";
+import { CatalogCard, HeroBanner, SearchCard, SearchHero } from "@/components/CatalogCard";
 import { ReviewList } from "@/components/ReviewList";
 import { PageHeader } from "@/components/PageHeader";
 import { TitleCard } from "@/components/TitleCard";
-import { Pill, Pills, PrimaryButton, Skeleton } from "@/components/ui";
+import { GhostButton, Pill, Pills, PrimaryButton, Skeleton } from "@/components/ui";
 import { CATALOG } from "@/lib/catalog-data";
 import { needsReview } from "@/lib/enrich";
 import { useLang, useT } from "@/lib/i18n";
+import { buildShelves, filterLive, sortLive, topGenres, YEAR_OK, type Sort, type YearFilter } from "@/lib/shelves";
+import { useCatalogPopular } from "@/lib/useCatalogPopular";
 import { useCatalogSearch } from "@/lib/useCatalogSearch";
 import { ALL_GENRES, findMine, genreCounts, recommend, STATUSES, statusLabel, TYPES, TYPES_PLURAL } from "@/lib/rules";
 import { useStore } from "@/lib/store";
@@ -17,17 +19,7 @@ import type { CatalogItem, TitleStatus, TitleType } from "@/lib/types";
 import Link from "next/link";
 
 type TypeFilter = "all" | TitleType;
-type YearFilter = "all" | "2020" | "2010" | "2000" | "old";
 type AirFilter = "all" | "o" | "d" | "s";
-type Sort = "pop" | "rating" | "new";
-
-const YEAR_OK: Record<YearFilter, (y: number) => boolean> = {
-  all: () => true,
-  "2020": (y) => y >= 2020,
-  "2010": (y) => y >= 2010 && y < 2020,
-  "2000": (y) => y >= 2000 && y < 2010,
-  old: (y) => y < 2000,
-};
 const SORTERS: Record<Sort, (a: CatalogItem, b: CatalogItem) => number> = {
   rating: (a, b) => b.r - a.r,
   pop: (a, b) => b.p - a.p,
@@ -51,6 +43,9 @@ export default function CatalogPage() {
   const [menu, setMenu] = useState<string | null>(null);
 
   const live = useCatalogSearch(cq, tfilter, view === "discover");
+  // Живая подборка для полок; пока её нет (загрузка, ошибка) показываем статическую
+  const pop = useCatalogPopular(tfilter, view === "discover");
+  const liveOk = pop.status === "ready" && pop.results.length > 0;
   const q = cq.trim().toLowerCase();
   const nm = (c: CatalogItem) => (lang === "en" ? c.en : c.t);
   const active = !!q || fGenres.length > 0 || fYear !== "all" || fStatus !== "all" || fSort !== "pop";
@@ -97,6 +92,9 @@ export default function CatalogPage() {
   }, [list, items, lang]);
 
   const reviewCount = useMemo(() => items.filter(needsReview).length, [items]);
+  const liveShelves = useMemo(() => buildShelves(pop.results, items, t), [pop.results, items, lang]); // eslint-disable-line react-hooks/exhaustive-deps
+  const liveFiltered = useMemo(() => sortLive(filterLive(pop.results, fGenres, fYear), fSort), [pop.results, fGenres, fYear, fSort]);
+  const genrePills = liveOk ? topGenres(pop.results) : ALL_GENRES;
   const mine = items.filter((x) => (cfilter === "all" || x.st === cfilter) && (tfilter === "all" || x.type === tfilter));
 
   const toggleGenre = (g: string) => setFGenres((p) => (p.includes(g) ? p.filter((x) => x !== g) : [...p, g]));
@@ -178,7 +176,7 @@ export default function CatalogPage() {
               >
                 <div className="flex flex-col gap-4 rounded-[22px] border border-line bg-glass p-5 shadow-card">
                   <FilterGroup label={t("Жанры")}>
-                    {ALL_GENRES.map((g) => (
+                    {genrePills.map((g) => (
                       <Pill key={g} on={fGenres.includes(g)} onClick={() => toggleGenre(g)}>
                         {t(g)}
                       </Pill>
@@ -189,11 +187,13 @@ export default function CatalogPage() {
                       <Pill key={k} on={fYear === k} onClick={() => setFYear(k)}>{n}</Pill>
                     ))}
                   </FilterGroup>
-                  <FilterGroup label={t("Статус")}>
-                    {([["all", t("Любой")], ["o", t("Выходит")], ["d", t("Завершён")], ["s", t("Анонс")]] as [AirFilter, string][]).map(([k, n]) => (
-                      <Pill key={k} on={fStatus === k} onClick={() => setFStatus(k)}>{n}</Pill>
-                    ))}
-                  </FilterGroup>
+                  {!liveOk && (
+                    <FilterGroup label={t("Статус")}>
+                      {([["all", t("Любой")], ["o", t("Выходит")], ["d", t("Завершён")], ["s", t("Анонс")]] as [AirFilter, string][]).map(([k, n]) => (
+                        <Pill key={k} on={fStatus === k} onClick={() => setFStatus(k)}>{n}</Pill>
+                      ))}
+                    </FilterGroup>
+                  )}
                   <FilterGroup label={t("Сортировка")}>
                     {([["pop", t("По популярности")], ["rating", t("По рейтингу")], ["new", t("Новинки")]] as [Sort, string][]).map(([k, n]) => (
                       <Pill key={k} on={fSort === k} onClick={() => setFSort(k)}>{n}</Pill>
@@ -210,8 +210,51 @@ export default function CatalogPage() {
           <Pills items={typeTabs} value={tfilter} onChange={setTfilter} h={44} />
           {menu && <div className="fixed inset-0 z-[4]" onClick={() => setMenu(null)} />}
 
-          {!active ? (
+          {!active && pop.status === "loading" ? (
+            <div className="flex flex-col gap-5" aria-busy="true">
+              <Skeleton className="h-60 w-[min(580px,88%)] rounded-[26px]" />
+              <Skeleton className="h-[260px]" />
+            </div>
+          ) : !active && liveOk ? (
             <>
+              <div className="snap-row pb-1">
+                {liveShelves[0]?.cards.filter((c) => c.img).slice(0, 5).map((r, i) => (
+                  <SearchHero key={r.key} r={r} index={i} menuKey={`hero-${r.key}`} openMenu={menu} setOpenMenu={setMenu} />
+                ))}
+              </div>
+              {pop.warnings.length > 0 && (
+                <div className="text-[13px] text-muted">
+                  {t("Часть источников недоступна: ")}
+                  {pop.warnings.join("; ")}
+                </div>
+              )}
+              {liveShelves.map((sh) => (
+                <section key={sh.key} className="flex flex-col gap-3">
+                  <div>
+                    <h2 className="font-display text-xl font-semibold tracking-[-.02em]">{sh.title}</h2>
+                    {sh.sub && <div className="mt-0.5 text-[13px] text-muted">{sh.sub}</div>}
+                  </div>
+                  <div className="snap-row px-0.5 pt-1 pb-2">
+                    {sh.cards.map((r) => (
+                      <div key={r.key} className="w-[150px] flex-none">
+                        <SearchCard r={r} menuKey={`${sh.key}-${r.key}`} openMenu={menu} setOpenMenu={setMenu} />
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </>
+          ) : !active ? (
+            <>
+              {pop.status === "error" && (
+                <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-glass px-4 py-3 text-[13px] text-muted">
+                  <span>
+                    {t("Живая подборка недоступна, показана базовая: ")}
+                    {pop.error}
+                  </span>
+                  <GhostButton onClick={pop.retry}>{t("Повторить")}</GhostButton>
+                </div>
+              )}
               <div className="snap-row pb-1">
                 {[...list].sort(SORTERS.pop).slice(0, 5).map((c, i) => (
                   <HeroBanner key={c.id} c={c} index={i} menuKey={`hero-${c.id}`} openMenu={menu} setOpenMenu={setMenu} />
@@ -274,7 +317,24 @@ export default function CatalogPage() {
                   )}
                 </section>
               )}
-              {(!live.active || results.length > 0) && (
+              {!q && liveOk && (
+                <section className="flex flex-col gap-3">
+                  <h2 className="font-display text-xl font-semibold tracking-[-.02em]">
+                    {t("Найдено: ")}
+                    {liveFiltered.length}
+                  </h2>
+                  {liveFiltered.length ? (
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-x-3.5 gap-y-[18px]">
+                      {liveFiltered.map((r) => (
+                        <SearchCard key={r.key} r={r} menuKey={`f-${r.key}`} openMenu={menu} setOpenMenu={setMenu} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-10 text-center text-[15px] text-muted">{t("Ничего не найдено")}</div>
+                  )}
+                </section>
+              )}
+              {(q || !liveOk) && (!live.active || results.length > 0) && (
                 <section className="flex flex-col gap-3">
                   <h2 className="font-display text-xl font-semibold tracking-[-.02em]">
                     {live.active ? t("В подборке: ") : t("Найдено: ")}

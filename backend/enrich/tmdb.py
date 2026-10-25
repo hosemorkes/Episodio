@@ -1,5 +1,6 @@
 """Клиент TMDB (https://developer.themoviedb.org): поиск сериалов, телепередач, мультсериалов и фильмов."""
 import os
+from dataclasses import replace
 from typing import Optional
 
 import httpx
@@ -23,6 +24,14 @@ COUNTRY_NAMES = {
     "TR": "Турция", "IL": "Израиль", "BR": "Бразилия", "MX": "Мексика", "AR": "Аргентина",
     "NZ": "Новая Зеландия", "ZA": "ЮАР",
 }
+
+
+# Телепередачи и мультсериалы TMDB отдельной категорией не выделяет, это жанры сериалов
+GENRE_ANIMATION = 16
+GENRES_SHOW = "10763|10764|10767"  # новости, реалити, ток-шоу
+
+# Статусы сериала, при которых number_of_episodes — это итог, а не число вышедших серий
+FINISHED_STATUSES = {"Ended", "Canceled"}
 
 
 class TMDBError(ProviderError):
@@ -102,6 +111,33 @@ class TMDBProvider:
         genres = self.genre_names(kind) if results else {}
         return [self._to_candidate(kind, result, genres) for result in results]
 
+    def popular(self, category: str, limit: int) -> list[Candidate]:
+        """Популярное по категории. Сериалы, мультсериалы и ТВ-шоу — один список сериалов, разделённый по жанрам."""
+        if category == "movie":
+            kind, path, params = "movie", "/movie/popular", {}
+        else:
+            kind, path = "tv", "/discover/tv"
+            params = {"sort_by": "popularity.desc", "vote_count.gte": 50}
+            if category == "cartoon":
+                params["with_genres"] = GENRE_ANIMATION
+            elif category == "tv_show":
+                params["with_genres"] = GENRES_SHOW
+            else:
+                params["without_genres"] = f"{GENRE_ANIMATION},{GENRES_SHOW.replace('|', ',')}"
+        results = self._get(path, {"language": self.language, **params}).get("results", [])[:limit]
+        genres = self.genre_names(kind) if results else {}
+        return [self._to_candidate(kind, result, genres) for result in results]
+
+    def fill_details(self, candidate: Candidate) -> Candidate:
+        """Общее число серий сериала (только если он завершён: у идущего итог неизвестен). Фильмам нечего добавлять."""
+        if candidate.category is None or candidate.category == "movie":
+            return candidate
+        data = self._get(f"/tv/{candidate.external_id}", {"language": self.language})
+        total = data.get("number_of_episodes")
+        if data.get("status") in FINISHED_STATUSES and isinstance(total, int) and total > 0:
+            return replace(candidate, total_episodes=total)
+        return candidate
+
     # --- разбор ответа ---
 
     @staticmethod
@@ -131,4 +167,5 @@ class TMDBProvider:
             poster_url=f"{IMAGE_BASE}{poster_path}" if poster_path else None,
             genres=[genres[i] for i in result.get("genre_ids", []) if i in genres],
             country=country,
+            rating=round(vote, 1) if (vote := result.get("vote_average")) else None,
         )

@@ -100,7 +100,7 @@ def test_search_one_category(client, use_enricher):
     assert body["results"][0] == {
         "source": "fake", "external_id": "1", "category": "anime", "title": "Фрирен",
         "original_title": "Sousou no Frieren", "year": 2023, "poster_url": "https://img.example/frieren.png",
-        "genres": ["фэнтези", "драма"], "country": None, "author": None,
+        "genres": ["фэнтези", "драма"], "country": None, "author": None, "rating": None,
     }
     assert enricher.asked == ["anime"]
 
