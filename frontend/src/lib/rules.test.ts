@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEMO_ITEMS } from "./demo-data";
-import { exportRows, fixSt, hasSeasons, isReading, metaOf, parseBackup, pct, progressText, statusLabel, statusPatch, TYPES, TYPES_PLURAL, unitOf } from "./rules";
+import { exportRows, findDuplicate, fixSt, hasSeasons, isReading, metaOf, parseBackup, pct, progressText, statusLabel, statusPatch, TYPES, TYPES_PLURAL, unitOf } from "./rules";
 
 const t = (s: string) => s;
 
@@ -41,13 +41,16 @@ describe("категории", () => {
 
 describe("statusPatch", () => {
   const x = DEMO_ITEMS[0];
-  it("«просмотрено» ставит ep=tot", () => expect(statusPatch(x, "done").ep).toBe(x.tot));
-  it("«в планах» обнуляет прогресс", () => expect(statusPatch(x, "planned").ep).toBe(0));
-  it("«смотрю» у законченного откатывает на серию назад", () => {
-    expect(statusPatch({ ...x, ep: x.tot }, "watching").ep).toBe(x.tot - 1);
+  it("смена статуса не трогает прогресс", () => {
+    for (const st of ["done", "planned", "watching", "dropped"] as const) {
+      expect(statusPatch(x, st)).toEqual({ ...x, st });
+      expect(statusPatch({ ...x, ep: x.tot }, st).ep).toBe(x.tot);
+    }
   });
-  it("неизвестное «всего»: «просмотрено» не трогает прогресс", () => {
-    expect(statusPatch({ ...x, ep: 7, tot: 0 }, "done").ep).toBe(7);
+  it("фильм: «просмотрен» ставит 1, остальные статусы 0", () => {
+    const m = { ...x, type: "movie" as const, tot: 1, ep: 0 };
+    expect(statusPatch(m, "done").ep).toBe(1);
+    expect(statusPatch({ ...m, ep: 1 }, "planned").ep).toBe(0);
   });
 });
 
@@ -96,4 +99,18 @@ describe("exportRows", () => {
     const row = Object.fromEntries(head.map((h, i) => [h, body[0][i]]));
     expect(row).toMatchObject({ Том: 2, Автор: "Герберт", Озвучка: "LostFilm", Ссылка: "https://x.test", Заметка: "Топ" });
   });
+});
+
+describe("findDuplicate", () => {
+  const a = { ...DEMO_ITEMS[0], id: 1, type: "anime" as const, t: "Ходячий замок", en: "Howl's Moving Castle" };
+  const lib = [a, { ...a, id: 2, type: "movie" as const, t: "Другое", en: "Other" }];
+  it("находит по названию без учёта регистра и пробелов", () => {
+    expect(findDuplicate(lib, { type: "anime", t: "  ходячий   ЗАМОК " })?.id).toBe(1);
+  });
+  it("находит по оригинальному названию", () => {
+    expect(findDuplicate(lib, { type: "anime", t: "Новое", en: "howl's moving castle" })?.id).toBe(1);
+  });
+  it("другой тип — не дубликат", () => expect(findDuplicate(lib, { type: "manga", t: "Ходячий замок" })).toBeUndefined());
+  it("саму редактируемую запись не считает", () => expect(findDuplicate(lib, { id: 1, type: "anime", t: "Ходячий замок" })).toBeUndefined());
+  it("пустое название не совпадает ни с чем", () => expect(findDuplicate(lib, { type: "anime", t: " ", en: "" })).toBeUndefined());
 });

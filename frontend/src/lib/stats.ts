@@ -48,5 +48,55 @@ export function yearBars(years: Stats["years"]): number[] {
   return bars;
 }
 
+const NO_GENRE = new Set(["Без жанра", "No genre"]);
+
+/** Строки «название → число тайтлов» по убыванию, при равенстве по алфавиту */
+function countRows(names: string[]): [string, number][] {
+  const m = new Map<string, number>();
+  names.forEach((n) => m.set(n, (m.get(n) ?? 0) + 1));
+  return [...m].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+}
+
+/**
+ * Разрезы статистики по копии библиотеки в сторе, с необязательным фильтром по типу.
+ * Жанры, страны и годы считаются по числу тайтлов (каждая карточка = 1); топ — по накопленному прогрессу
+ * (серии или главы, просмотренный фильм = 1). Считать на клиенте можно потому, что библиотека загружена целиком:
+ * так сразу видны новые жанры и работает выбор раздела.
+ */
+export function libraryBreakdown(items: Title[], type: "all" | Title["type"], topLimit = 5) {
+  const list = type === "all" ? items : items.filter((x) => x.type === type);
+  const progress = (x: Title) => (x.type === "movie" ? (x.st === "done" ? 1 : 0) : x.ep);
+  const bars = YEAR_BUCKETS.map(() => 0);
+  list.forEach((x) => x.y > 0 && (bars[yearBucket(x.y)] += 1));
+  return {
+    total: list.length,
+    genres: countRows(list.flatMap((x) => x.g.filter((g) => !NO_GENRE.has(g)))),
+    countries: countRows(list.map((x) => x.c).filter((c) => c && c !== "—")),
+    years: bars,
+    top: list
+      .map((x) => ({ item: x, progress: progress(x) }))
+      .filter((x) => x.progress > 0)
+      .sort((a, b) => b.progress - a.progress || a.item.t.localeCompare(b.item.t))
+      .slice(0, topLimit),
+  };
+}
+
+/** Распределение оценок: counts[0] — тайтлы с оценкой 1, counts[9] — с оценкой 10; без оценки считаются отдельно */
+export function ratingBreakdown(items: Title[], type: "all" | Title["type"]) {
+  const list = type === "all" ? items : items.filter((x) => x.type === type);
+  const counts = Array<number>(10).fill(0);
+  let sum = 0;
+  let rated = 0;
+  for (const x of list) {
+    const r = x.rate ?? 0;
+    if (r >= 1 && r <= 10) {
+      counts[r - 1] += 1;
+      sum += r;
+      rated += 1;
+    }
+  }
+  return { counts, rated, unrated: list.length - rated, avg: rated ? Math.round((sum / rated) * 10) / 10 : 0 };
+}
+
 /** В библиотеке нет ни одной записи: считать нечего (диаграммы строятся по числу тайтлов, прогресс не нужен) */
 export const isStatsEmpty = (s: Stats) => s.totalItems === 0;

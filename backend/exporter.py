@@ -1,4 +1,4 @@
-"""Экспорт библиотеки: Excel (по листу на категорию, русские заголовки, настоящие даты) и JSON.
+"""Экспорт библиотеки: Excel (лист «Все» и по листу на категорию, русские заголовки, настоящие даты) и JSON.
 
 Вся библиотека целиком, включая заметки: эндпоинт закрыт ключом API, как и остальные. В отличие от публичных витрин
 здесь ничего не скрывается, это личная выгрузка владельца.
@@ -40,6 +40,11 @@ SHEETS = [
     ("audiobook", "Аудиокниги"),
 ]
 EMPTY_SHEET = "Библиотека"
+ALL_SHEET = "Все"  # первый лист: вся библиотека разом, с столбцом «Тип»
+TYPE_LABELS = {
+    "anime": "Аниме", "cartoon": "Мультсериал", "tv_series": "Сериал", "movie": "Фильм",
+    "tv_show": "ТВ-шоу", "manga": "Манга", "book": "Книга", "audiobook": "Аудиокнига",
+}
 
 # Подписи статусов: «смотрю» у сериалов и фильмов, «читаю» у манги и книг, «слушаю» у аудиокниг
 STATUS_LABELS = {
@@ -97,7 +102,17 @@ def columns(category: str) -> list[tuple[str, Any, Optional[str]]]:
         ("Статус", lambda i: status_label(i.category, i.status), None),
         ("Оценка", lambda i: i.rating, None),
     ]
-    if category in EPISODE_CATEGORIES:
+    if category == ALL_SHEET:
+        cols.insert(1, ("Тип", lambda i: TYPE_LABELS.get(i.category, i.category), None))
+        cols += [
+            ("Сезон", lambda i: i.current_season, None),
+            ("Серий просмотрено", lambda i: i.current_episode, None),
+            ("Всего серий", lambda i: i.total_episodes, None),
+            ("Том", lambda i: i.current_volume, None),
+            ("Глав прочитано", lambda i: i.current_chapter, None),
+            ("Всего глав", lambda i: i.total_chapters, None),
+        ]
+    elif category in EPISODE_CATEGORIES:
         cols += [
             ("Сезон", lambda i: i.current_season, None),
             ("Серий просмотрено", lambda i: i.current_episode, None),
@@ -152,13 +167,15 @@ def fill_sheet(ws: Worksheet, category: str, items: list[MediaItem]) -> None:
 
 
 def build_workbook(items: list[MediaItem]) -> Workbook:
-    """Книга Excel: лист на каждую категорию, в которой есть записи; для пустой библиотеки один лист с заголовками."""
+    """Книга Excel: первый лист «Все» со всей библиотекой, затем лист на каждую категорию, в которой есть записи; для пустой библиотеки один лист с заголовками."""
     wb = Workbook()
     wb.remove(wb.active)
     by_category: dict[str, list[MediaItem]] = {}
     for item in items:
         by_category.setdefault(item.category, []).append(item)
 
+    if items:
+        fill_sheet(wb.create_sheet(ALL_SHEET), ALL_SHEET, items)
     for category, name in SHEETS:
         if category in by_category:
             fill_sheet(wb.create_sheet(name), category, by_category[category])

@@ -154,6 +154,7 @@ export default function SettingsPage() {
           <button type="button" onClick={exportTxt} className={`${btn} border-slate-400/30`}>{t("Экспорт в TXT")}</button>
           <button type="button" onClick={() => void exportFromServer("json")} disabled={!!exporting} className={`${btn} border-slate-400/30 disabled:opacity-60`}>{exporting === "json" ? t("Готовлю файл…") : t("Экспорт в JSON")}</button>
         </div>
+        <div className="text-xs text-muted">{t("Excel и TXT для восстановления не подходят.")}</div>
       </Block>
 
       <Block className="flex flex-col gap-3.5">

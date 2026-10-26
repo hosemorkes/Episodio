@@ -16,7 +16,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const ensureLoaded = useStore((s) => s.ensureLoaded);
   const loadError = useStore((s) => s.loadError);
   const hydrated = useStore((s) => s.hydrated);
-  // Страницы деталей и редактирования — полноэкранные, без таб-бара
+  // Страницы деталей и редактирования — без общей обёртки <main>, но с таб-баром
   const fullscreen = pathname.startsWith("/title");
 
   // Данные загружаются, как только оболочка открыта (в том числе сразу после входа, без перезагрузки страницы)
@@ -38,7 +38,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[radial-gradient(900px_500px_at_80%_-10%,color-mix(in_srgb,var(--acc)_12%,transparent),transparent)] text-fg">
       {fullscreen ? (
-        children
+        <>
+          {/* запас снизу, чтобы таб-бар не перекрывал кнопки формы */}
+          <div className="pb-[calc(70px+env(safe-area-inset-bottom))]">{children}</div>
+          <BottomNav />
+        </>
       ) : (
         <>
           <main className="px-4 pt-5 pb-[calc(110px+env(safe-area-inset-bottom))] min-[560px]:px-8 min-[560px]:pt-8">

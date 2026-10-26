@@ -1,9 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { useT } from "@/lib/i18n";
-import { ALL_GENRES, hasSeasons, isReading, posterBg, TYPES, unitOf } from "@/lib/rules";
+import { ALL_GENRES, findDuplicate, hasSeasons, isReading, posterBg, TYPES, unitOf } from "@/lib/rules";
 import { type TitleDraft, useStore } from "@/lib/store";
 import { Pill, Spinner } from "./ui";
 
@@ -53,12 +54,14 @@ function validate(d: TitleDraft, t: (s: string) => string) {
 export function TitleForm({ initial }: { initial: TitleDraft }) {
   const router = useRouter();
   const t = useT();
-  const { saveTitle, deleteTitle, say } = useStore();
+  const { items, saveTitle, deleteTitle, say } = useStore();
   const [d, setD] = useState(initial);
   const [saving, setSaving] = useState(false);
   const [tried, setTried] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
   const [gi, setGi] = useState("");
+  // Подтверждённое «всё равно сохранить» относится к конкретным типу и названию: правка названия снимает его
+  const [ackKey, setAckKey] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const set = <K extends keyof TitleDraft>(k: K, v: TitleDraft[K]) => setD((p) => ({ ...p, [k]: v }));
@@ -66,7 +69,11 @@ export function TitleForm({ initial }: { initial: TitleDraft }) {
   const show = (k: keyof TitleDraft) => (tried ? errors[k] : undefined);
   const u = unitOf(d.type, t);
   const backLabel = d.id !== null ? t("← Назад к просмотру") : t("← Назад");
-  const back = () => (d.id !== null ? router.push(`/title/${d.id}`) : window.history.length > 1 ? router.back() : router.push("/"));
+  const back = () => (d.id !== null ? router.replace(`/title/${d.id}`) : window.history.length > 1 ? router.back() : router.push("/"));
+
+  const dup = findDuplicate(items, d);
+  const dupKey = `${d.type}|${d.t.trim()}|${d.en.trim()}`;
+  const dupWarn = !!dup && ackKey !== dupKey;
 
   const addGenre = (raw: string) => {
     const n = raw.trim();
@@ -80,6 +87,12 @@ export function TitleForm({ initial }: { initial: TitleDraft }) {
     if (saving) return;
     if (Object.keys(errors).length) {
       say(Object.values(errors)[0]!);
+      return;
+    }
+    if (dupWarn) {
+      // Первое нажатие только предупреждает, второе сохраняет
+      setAckKey(dupKey);
+      say(t("Такой тайтл уже есть в библиотеке"));
       return;
     }
     setSaving(true);
@@ -236,6 +249,18 @@ export function TitleForm({ initial }: { initial: TitleDraft }) {
           </div>
         </div>
 
+        {dup && (
+          <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/50 bg-amber-400/10 px-4 py-3 text-sm">
+            <span>
+              {t("Такой тайтл уже есть в библиотеке: ")}
+              <b>{dup.t}</b>
+            </span>
+            <Link href={`/title/${dup.id}`} className="font-display font-semibold text-acc">
+              {t("Открыть")} ↗
+            </Link>
+          </div>
+        )}
+
         <div className="flex flex-wrap justify-between gap-2.5">
           {d.id !== null && (
             <button
@@ -256,7 +281,7 @@ export function TitleForm({ initial }: { initial: TitleDraft }) {
             className="ml-auto flex h-11 min-w-[140px] items-center justify-center gap-2.5 rounded-[14px] bg-acc px-6 font-display text-[15px] font-semibold text-onacc shadow-[0_0_22px_color-mix(in_srgb,var(--acc)_45%,transparent)] transition-shadow hover:shadow-[0_0_32px_color-mix(in_srgb,var(--acc)_75%,transparent)]"
           >
             {saving && <Spinner />}
-            {saving ? t("Сохраняю…") : t("Сохранить")}
+            {saving ? t("Сохраняю…") : dupWarn ? t("Всё равно сохранить") : t("Сохранить")}
           </button>
         </div>
       </form>

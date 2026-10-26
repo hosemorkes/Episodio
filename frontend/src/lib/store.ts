@@ -66,6 +66,8 @@ interface State {
   mark: (id: number) => void;
   minus: (id: number) => void;
   setStatus: (id: number, st: TitleStatus) => void;
+  setSeason: (id: number, n: number) => void;
+  setVolume: (id: number, n: number) => void;
   setRate: (id: number, n: number) => void;
   setNote: (id: number, text: string) => void;
   saveTitle: (draft: TitleDraft) => Promise<number | null>;
@@ -349,6 +351,21 @@ export const useStore = create<State>()(
           upd(id, () => next);
           // Журнал фильма ведёт сервер, поэтому после смены статуса фильма читаем его заново
           send(id, () => api.updateItem(id, next), it.type === "movie" ? () => void reloadLog() : undefined);
+        },
+        setSeason: (id, n) => {
+          const it = get().items.find((x) => x.id === id);
+          if (!it || !hasSeasons(it.type)) return;
+          const next = { ...it, se: Math.max(1, Math.floor(n)) };
+          upd(id, () => next);
+          send(id, () => api.updateItem(id, next));
+        },
+        setVolume: (id, n) => {
+          const it = get().items.find((x) => x.id === id);
+          if (!it || !isReading(it.type)) return;
+          const vol = Math.max(0, Math.floor(n));
+          const next = { ...it, vol: vol > 0 ? vol : undefined };
+          upd(id, () => next);
+          send(id, () => api.updateItem(id, next));
         },
         setRate: (id, n) => {
           const it = get().items.find((x) => x.id === id);

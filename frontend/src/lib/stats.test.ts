@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isStatsEmpty, totalsOf, watchHours, weekCounts, weekRange, yearBars, ymd } from "./stats";
+import { isStatsEmpty, libraryBreakdown, ratingBreakdown, totalsOf, watchHours, weekCounts, weekRange, yearBars, ymd } from "./stats";
 import type { Stats, Title } from "./types";
 
 const title = (over: Partial<Title> = {}): Title => ({
@@ -118,5 +118,54 @@ describe("isStatsEmpty", () => {
   it("пусто только без записей: тайтлы без прогресса диаграммы наполняют", () => {
     expect(isStatsEmpty(stats())).toBe(true);
     expect(isStatsEmpty(stats({ totalItems: 3, top: [] }))).toBe(false);
+  });
+});
+
+describe("libraryBreakdown", () => {
+  const lib = [
+    title({ id: 1, type: "anime", g: ["Драма", "Комедия"], c: "Япония", y: 2008, ep: 12 }),
+    title({ id: 2, type: "anime", g: ["Драма", "Без жанра"], c: "Япония", y: 2021, ep: 30, t: "Б" }),
+    title({ id: 3, type: "movie", st: "done", g: ["Драма"], c: "—", y: 0, ep: 0 }),
+    title({ id: 4, type: "book", g: ["Новый жанр"], c: "США", y: 2023, ep: 0 }),
+  ];
+
+  it("считает жанры, страны и годы по числу тайтлов, без заглушек", () => {
+    const r = libraryBreakdown(lib, "all");
+    expect(r.total).toBe(4);
+    expect(r.genres).toEqual([["Драма", 3], ["Комедия", 1], ["Новый жанр", 1]]);
+    expect(r.countries).toEqual([["Япония", 2], ["США", 1]]);
+    expect(r.years).toEqual([1, 0, 0, 1, 1]);
+  });
+
+  it("фильтрует по типу", () => {
+    const r = libraryBreakdown(lib, "anime");
+    expect(r.total).toBe(2);
+    expect(r.genres).toEqual([["Драма", 2], ["Комедия", 1]]);
+    expect(libraryBreakdown(lib, "manga").genres).toEqual([]);
+  });
+
+  it("топ по прогрессу: просмотренный фильм = 1, нулевой прогресс не входит, лимит", () => {
+    const r = libraryBreakdown(lib, "all", 2);
+    expect(r.top.map((x) => [x.item.id, x.progress])).toEqual([[2, 30], [1, 12]]);
+    expect(libraryBreakdown(lib, "movie").top.map((x) => x.progress)).toEqual([1]);
+  });
+});
+
+describe("ratingBreakdown", () => {
+  const lib = [
+    title({ id: 1, type: "anime", rate: 8 }),
+    title({ id: 2, type: "anime", rate: 8 }),
+    title({ id: 3, type: "movie", rate: 5 }),
+    title({ id: 4, type: "book", rate: 0 }),
+    title({ id: 5, type: "book" }),
+  ];
+  it("считает оценки по значениям, среднюю и без оценки", () => {
+    const r = ratingBreakdown(lib, "all");
+    expect(r.counts).toEqual([0, 0, 0, 0, 1, 0, 0, 2, 0, 0]);
+    expect(r).toMatchObject({ rated: 3, unrated: 2, avg: 7 });
+  });
+  it("фильтрует по типу; без оценок среднее 0", () => {
+    expect(ratingBreakdown(lib, "anime")).toMatchObject({ rated: 2, unrated: 0, avg: 8 });
+    expect(ratingBreakdown(lib, "book")).toMatchObject({ rated: 0, unrated: 2, avg: 0 });
   });
 });

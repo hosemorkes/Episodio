@@ -7,12 +7,13 @@ import { TitleCard } from "@/components/TitleCard";
 import { Block, PrimaryButton, Skeleton } from "@/components/ui";
 import { draftReview } from "@/lib/epi";
 import { useLang, useT } from "@/lib/i18n";
-import { altName, displayName, genreLine, initials, pct, posterBg, unitOf } from "@/lib/rules";
-import { totalsOf, watchHours, weekCounts, weekRange } from "@/lib/stats";
+import { altName, displayName, genreLine, hasSeasons, initials, isReading, pct, posterBg, unitOf } from "@/lib/rules";
+import { totalsOf, weekCounts, weekRange } from "@/lib/stats";
 import { useStore } from "@/lib/store";
 import { useStats } from "@/lib/useStats";
 
-const WEEK_DAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+const RECENT_LIMIT = 12;
+const WEEK_DAYS =["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 
 function greeting(hour: number) {
   return hour < 5 ? "Доброй ночи" : hour < 12 ? "Доброе утро" : hour < 18 ? "Добрый день" : "Добрый вечер";
@@ -61,6 +62,9 @@ export default function Dashboard() {
 
   const noted = items.find((x) => x.note);
 
+  // «Мои тайтлы»: сервер отдаёт записи по updated_at (свежие первыми); только что тронутая карточка идёт первой
+  const recent = [...items.filter((x) => x.id === lastId), ...items.filter((x) => x.id !== lastId)].slice(0, RECENT_LIMIT);
+
   return (
     <>
       {header}
@@ -84,7 +88,12 @@ export default function Dashboard() {
             </Link>
             <div className="text-sm text-fg2">{altName(hero, lang)}</div>
             <div className="text-sm text-muted">
-              {hero.type === "movie" ? t("Фильм") : hu.line + next + (hero.tot > 0 ? t(" из ") + hero.tot : "")} · {genreLine(hero.g, t)}
+              {[
+                ...(hasSeasons(hero.type) ? [t("Сезон ") + (hero.se ?? 1)] : []),
+                ...(isReading(hero.type) && hero.vol ? [t("Том ") + hero.vol] : []),
+                hero.type === "movie" ? t("Фильм") : hu.line + next + (hero.tot > 0 ? t(" из ") + hero.tot : ""),
+                genreLine(hero.g, t),
+              ].join(" · ")}
             </div>
             <div className="h-1.5 overflow-hidden rounded-[3px] bg-slate-400/20">
               <div className="h-full bg-acc shadow-[0_0_12px_var(--acc)] transition-[width] duration-[400ms]" style={{ width: `${pct(hero.ep, hero.tot)}%` }} />
@@ -95,14 +104,12 @@ export default function Dashboard() {
           </div>
         </motion.div>
 
-        <Block className="flex flex-col justify-between gap-3">
+        <Block className="flex flex-col gap-3">
           <div className="text-[13px] text-muted">{t("Всего серий")}</div>
-          <motion.div key={total} initial={{ scale: 1.12, opacity: 0.6 }} animate={{ scale: 1, opacity: 1 }} className="origin-left font-display text-[56px] leading-none font-bold tracking-[-.04em]">
-            {total}
-          </motion.div>
-          <div className="text-[13px] text-acc">
-            ≈ {watchHours(total)}
-            {t(" ч просмотра")}
+          <div className="flex flex-1 items-center justify-center">
+            <motion.div key={total} initial={{ scale: 1.12, opacity: 0.6 }} animate={{ scale: 1, opacity: 1 }} className="font-display text-[56px] leading-none font-bold tracking-[-.04em]">
+              {total}
+            </motion.div>
           </div>
           {totals.chapters > 0 && (
             <div className="text-[13px] text-muted">
@@ -142,7 +149,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-2 gap-3.5 min-[560px]:grid-cols-3 min-[1100px]:grid-cols-6">
-        {items.map((it) => (
+        {recent.map((it) => (
           <TitleCard key={it.id} it={it} />
         ))}
       </div>

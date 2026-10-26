@@ -198,14 +198,25 @@ describe("minus (−1)", () => {
 });
 
 describe("статус, оценка, заметка", () => {
-  it("setStatus: «просмотрено» ставит ep=tot и отправляет карточку", async () => {
+  it("setStatus: «просмотрено» меняет только статус, прогресс остаётся", async () => {
     reset([title({ ep: 2, tot: 8 })]);
-    m.updateItem.mockResolvedValue(title({ ep: 8, st: "done" }));
+    m.updateItem.mockResolvedValue(title({ ep: 2, st: "done" }));
     state().setStatus(1, "done");
-    expect(item()).toMatchObject({ st: "done", ep: 8 });
+    expect(item()).toMatchObject({ st: "done", ep: 2 });
     await settle();
     expect(m.updateItem.mock.calls[0][0]).toBe(1);
-    expect(m.updateItem.mock.calls[0][1]).toMatchObject({ st: "done", ep: 8 });
+    expect(m.updateItem.mock.calls[0][1]).toMatchObject({ st: "done", ep: 2 });
+  });
+
+  it("setSeason: меняет сезон, не ниже 1, и отправляет карточку", async () => {
+    reset([title({ se: 1, ep: 3, tot: 12 })]);
+    m.updateItem.mockResolvedValue(title({ se: 2, ep: 3, tot: 12 }));
+    state().setSeason(1, 2);
+    expect(item()).toMatchObject({ se: 2, ep: 3 });
+    state().setSeason(1, 0);
+    expect(item().se).toBe(1);
+    await settle();
+    expect(m.updateItem.mock.calls[0][1]).toMatchObject({ se: 2, ep: 3 });
   });
 
   it("setStatus у фильма перечитывает журнал", async () => {

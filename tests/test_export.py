@@ -6,7 +6,7 @@ from datetime import date, datetime
 import pytest
 from openpyxl import load_workbook
 
-from backend.exporter import SHEETS, XLSX_TYPE, genres_text, status_label
+from backend.exporter import ALL_SHEET, SHEETS, XLSX_TYPE, genres_text, status_label
 from backend.models import MediaItem, ProgressLog
 
 
@@ -66,7 +66,7 @@ def test_one_sheet_per_present_category_in_fixed_order(client, db):
     add(db, "Сериал", "tv_series")
     add(db, "Ещё сериал", "tv_series")
     _, wb = get_xlsx(client)
-    assert wb.sheetnames == ["Аниме", "Сериалы", "Фильмы", "Книги"]
+    assert wb.sheetnames == [ALL_SHEET, "Аниме", "Сериалы", "Фильмы", "Книги"]
     assert [r["Название"] for r in rows(wb["Сериалы"])] == ["Ещё сериал", "Сериал"]  # по алфавиту
 
 
@@ -74,8 +74,8 @@ def test_every_category_has_its_sheet_name(client, db):
     for category, _ in SHEETS:
         add(db, f"T-{category}", category)
     _, wb = get_xlsx(client)
-    assert wb.sheetnames == [name for _, name in SHEETS]
-    assert wb.sheetnames == ["Аниме", "Мультсериалы", "Сериалы", "Фильмы", "ТВ-шоу", "Манга", "Книги", "Аудиокниги"]
+    assert wb.sheetnames == [ALL_SHEET] + [name for _, name in SHEETS]
+    assert wb.sheetnames[1:] == ["Аниме", "Мультсериалы", "Сериалы", "Фильмы", "ТВ-шоу", "Манга", "Книги", "Аудиокниги"]
 
 
 # --- Excel: заголовки и значения ---
@@ -200,7 +200,21 @@ def test_large_library_exports(client, db):
     db.add_all([MediaItem(title_ru=f"Тайтл {i}", category=["anime", "movie", "book"][i % 3], rating=1 + i % 10) for i in range(600)])
     db.commit()
     _, wb = get_xlsx(client)
-    assert sum(len(rows(ws)) for ws in wb.worksheets) == 600
+    assert len(rows(wb[ALL_SHEET])) == 600
+    assert sum(len(rows(ws)) for ws in wb.worksheets if ws.title != ALL_SHEET) == 600
+
+
+def test_first_sheet_has_every_item_with_type_and_both_progress_kinds(client, db):
+    add(db, "Аниме-тайтл", "anime", current_episode=3, total_episodes=12)
+    add(db, "Манга-тайтл", "manga", current_volume=2, current_chapter=14, total_chapters=40)
+    add(db, "Фильм-тайтл", "movie")
+    _, wb = get_xlsx(client)
+    assert wb.sheetnames[0] == ALL_SHEET
+    by_title = {r["Название"]: r for r in rows(wb[ALL_SHEET])}
+    assert set(by_title) == {"Аниме-тайтл", "Манга-тайтл", "Фильм-тайтл"}
+    assert by_title["Аниме-тайтл"]["Тип"] == "Аниме" and by_title["Аниме-тайтл"]["Серий просмотрено"] == 3
+    assert by_title["Манга-тайтл"]["Тип"] == "Манга" and by_title["Манга-тайтл"]["Том"] == 2
+    assert by_title["Манга-тайтл"]["Глав прочитано"] == 14
 
 
 # --- JSON ---

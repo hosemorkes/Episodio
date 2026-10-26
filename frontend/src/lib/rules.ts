@@ -86,9 +86,20 @@ export const STATUSES: [TitleStatus, string][] = [
 
 /** Изменения при ручной смене статуса: «просмотрено» ставит ep=tot, «в планах» — ep=0 */
 export function statusPatch(x: Title, st: TitleStatus): Title {
-  const known = x.tot > 0;
-  const ep = st === "done" ? (known ? x.tot : x.ep) : st === "planned" ? 0 : st === "watching" && known && x.ep >= x.tot ? Math.max(0, x.tot - 1) : x.ep;
-  return { ...x, st, ep };
+  // Прогресс не зависит от статуса: у сериалов, манги и книг счётчик остаётся как есть.
+  // Исключение — фильм: у него нет счётчика, «просмотрен» (ep 1) определяется самим статусом.
+  if (x.type !== "movie") return { ...x, st };
+  return { ...x, st, ep: st === "done" ? 1 : 0 };
+}
+
+const normName = (s: string | undefined) => (s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+
+/** Похожий тайтл в библиотеке: тот же тип и то же название (или оригинальное название), без учёта регистра и лишних пробелов */
+export function findDuplicate(items: Title[], d: { id?: number | null; type: TitleType; t: string; en?: string }): Title | undefined {
+  const t = normName(d.t);
+  const en = normName(d.en);
+  if (!t && !en) return undefined;
+  return items.find((x) => x.id !== d.id && x.type === d.type && ((t && normName(x.t) === t) || (en && normName(x.en) === en)));
 }
 
 export function posterBg(img: string | undefined, h: [number, number]) {

@@ -17,7 +17,7 @@ export function TitleDetail() {
   const router = useRouter();
   const t = useT();
   const lang = useLang();
-  const { items, hydrated, pulse, mark, minus, setStatus, setRate } = useStore();
+  const { items, hydrated, pulse, mark, minus, setStatus, setSeason, setVolume, setRate } = useStore();
   const it = items.find((x) => x.id === Number(id));
   const [enrichOpen, setEnrichOpen] = useState(false);
 
@@ -129,6 +129,36 @@ export function TitleDetail() {
           ))}
         </div>
       </section>
+
+      {hasSeasons(it.type) && (
+        <section className={card}>
+          <div className="kicker">{t("СЕЗОН")}</div>
+          <div className="flex items-center gap-4">
+            <button type="button" onClick={() => setSeason(it.id, (it.se ?? 1) - 1)} disabled={(it.se ?? 1) <= 1} aria-label={t("Предыдущий сезон")} className="flex size-12 items-center justify-center rounded-full border border-slate-400/30 font-display text-2xl font-semibold hover:border-acc disabled:opacity-40">
+              −
+            </button>
+            <div className="min-w-[120px] text-center font-display text-[44px] leading-none font-bold tracking-[-.04em]">{it.se ?? 1}</div>
+            <button type="button" onClick={() => setSeason(it.id, (it.se ?? 1) + 1)} aria-label={t("Следующий сезон")} className="flex size-12 items-center justify-center rounded-full border border-slate-400/30 font-display text-2xl font-semibold hover:border-acc">
+              +
+            </button>
+          </div>
+        </section>
+      )}
+
+      {isReading(it.type) && (
+        <section className={card}>
+          <div className="kicker">{t("ТОМ")}</div>
+          <div className="flex items-center gap-4">
+            <button type="button" onClick={() => setVolume(it.id, (it.vol ?? 0) - 1)} disabled={!it.vol} aria-label={t("Предыдущий том")} className="flex size-12 items-center justify-center rounded-full border border-slate-400/30 font-display text-2xl font-semibold hover:border-acc disabled:opacity-40">
+              −
+            </button>
+            <div className="min-w-[120px] text-center font-display text-[44px] leading-none font-bold tracking-[-.04em]">{it.vol || "—"}</div>
+            <button type="button" onClick={() => setVolume(it.id, (it.vol ?? 0) + 1)} aria-label={t("Следующий том")} className="flex size-12 items-center justify-center rounded-full border border-slate-400/30 font-display text-2xl font-semibold hover:border-acc">
+              +
+            </button>
+          </div>
+        </section>
+      )}
 
       <section className={card}>
         <div className="kicker">{t("ВАШ ПРОГРЕСС")}</div>
