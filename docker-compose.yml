@@ -1,0 +1,92 @@
+# Episodio на сервере: PostgreSQL, API (FastAPI), фронтенд (Next.js) и автобэкап.
+# https и домен обслуживает ваш Caddy, который уже стоит на сервере: web подключается к его сети (PROXY_NETWORK).
+# Все настройки берутся из .env в корне проекта (шаблон — .env.example, раздел Docker).
+# Запуск: docker compose up -d --build
+name: episodio
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-episodio}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Задайте DB_PASSWORD в .env}
+      POSTGRES_DB: ${DB_NAME:-episodio_db}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Подключение по DB_*: пароль с любыми символами экранируется сам. Пустой DATABASE_URL отключает значение из .env
+      DATABASE_URL: ""
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: ${DB_USER:-episodio}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME:-episodio_db}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - posters:/app/media/posters
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+
+  web:
+    container_name: episodio-app
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      API_URL: http://api:8000
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      default:
+      proxy:
+        # Имя, на которое ссылается Caddyfile сервера: episodio-app:3000
+        aliases: [episodio-app]
+
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      PGPASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: ${DB_USER:-episodio}
+      POSTGRES_DB: ${DB_NAME:-episodio_db}
+      BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-24}
+      BACKUP_KEEP: ${BACKUP_KEEP:-14}
+    volumes:
+      - ./deploy/backup.sh:/backup.sh:ro
+      - posters:/posters:ro
+      - ./backups:/backups
+    entrypoint: ["sh", "/backup.sh"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  posters:
+
+networks:
+  # Существующая внешняя сеть Caddy на сервере (web_gateway); создавать её не нужно
+  proxy:
+    external: true
+    name: ${PROXY_NETWORK:-web_gateway}

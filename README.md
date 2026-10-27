@@ -423,6 +423,48 @@ cd frontend && npm install && npm run dev   # интерфейс на http://loc
 
 Ручное обогащение в интерфейсе (кнопка «Найти данные», вкладка «Требуют проверки» в каталоге) использует те же ключи, что и `scripts.enrich`: без `TMDB_API_KEY` сериалы, фильмы и ТВ-шоу отвечают 503. Подробнее: [frontend/README.md](frontend/README.md#ручное-обогащение).
 
+## Развёртывание на сервере (Docker)
+
+Локально проект запускается без Docker (см. «Быстрый старт»), Docker нужен только для сервера. Одна команда поднимает PostgreSQL, API, фронтенд и автобэкап. https и домен обслуживает Caddy, который уже работает на сервере отдельным контейнером: фронтенд подключается к его docker-сети, порты наружу compose не публикует.
+
+```bash
+cp .env.example .env     # заполнить: DB_PASSWORD, API_KEY, AUTH_LOGIN, AUTH_PASSWORD, AUTH_SECRET, TMDB_API_KEY (PROXY_NETWORK по умолчанию web_gateway)
+docker compose up -d --build
+docker compose logs -f api web
+```
+
+Если сайта ещё нет в Caddyfile вашего Caddy, добавьте его и перезагрузите конфигурацию (`docker exec <контейнер-caddy> caddy reload --config /etc/caddy/Caddyfile`):
+
+```caddyfile
+episodio.example.com {
+	encode gzip
+	reverse_proxy episodio-app:3000
+}
+```
+
+Домен должен указывать на сервер, сертификат Caddy получит сам. Если Caddy запущен не в docker-сети с именем из `PROXY_NETWORK`, подключение не сработает: `docker compose up` сообщит, что сеть не найдена.
+
+| Сервис | Что делает |
+| --- | --- |
+| `db` | PostgreSQL 16, данные в томе `pgdata`; схема применяется при старте API (`scripts.init_db`) |
+| `api` | FastAPI; снаружи недоступен, к нему ходит только `web`. Постеры в томе `posters` |
+| `web` | Next.js, ходит в `api` по `http://api:8000` и подставляет `API_KEY`; для Caddy доступен как `episodio-app:3000` |
+| `backup` | Раз в `BACKUP_INTERVAL_HOURS` часов (24) кладёт в `./backups` дамп `episodio_*.dump` и архив постеров `posters_*.tar.gz`, хранит `BACKUP_KEEP` последних (14) |
+
+Подключение к базе в контейнерах задают `DB_USER`, `DB_PASSWORD`, `DB_NAME` из `.env`; `DB_HOST` и `API_URL` compose подставляет сам, `DATABASE_URL` в `.env` игнорируется. `API_KEY` и `AUTH_*` обязательны: сервер открыт в интернет.
+
+**Перенос текущей базы на сервер.** На старом компьютере: `python -m scripts.backup`, дальше скопируйте файл `.dump` и папку `media/posters` на сервер. На сервере (после `docker compose up -d`):
+
+```bash
+docker compose cp episodio_20261025_030000.dump db:/tmp/e.dump
+docker compose exec db sh -c 'pg_restore --no-owner --clean --if-exists -U "$POSTGRES_USER" -d "$POSTGRES_DB" /tmp/e.dump'
+docker run --rm -v episodio_posters:/dst -v "$PWD/posters:/src:ro" alpine sh -c 'cp -a /src/. /dst/ && chown -R 1000:1000 /dst'
+```
+
+(`posters` в последней команде — папка с вашими постерами рядом с compose-файлом.)
+
+**Восстановление из автобэкапа** — те же команды `pg_restore` с файлом из `./backups`, постеры: `tar -xzf backups/posters_….tar.gz -C <папка>` и копирование в том `episodio_posters`. Обновление версии: `git pull && docker compose up -d --build`. Копии из `./backups` стоит периодически забирать с сервера на другой диск.
+
 ## Тесты
 
 Тесты бэкенда (фронтенд проверяется отдельно, см. выше). Перед первым запуском:
@@ -467,6 +509,7 @@ Episodio/
 │   ├── progress.py     # Отметка серий/глав и журнал progress_log
 │   ├── catalog.py      # Поиск и популярное по внешним каталогам
 │   ├── showcase.py     # Витрины: выборка топа, публичный ответ, управление
+│   ├── Dockerfile      # Образ API для сервера
 │   ├── exporter.py     # Экспорт библиотеки: Excel (openpyxl) и JSON
 │   ├── stats.py        # Статистика: распределения и активность журнала
 │   ├── main.py         # Приложение FastAPI и эндпоинты
@@ -505,7 +548,9 @@ Episodio/
 │   ├── test_enrich_providers.py # Тесты Shikimori и Open Library (без сети)
 │   ├── test_enrich_api.py # Тесты ручного выбора кандидатов через API
 │   └── fixtures/       # Тестовые данные (media_sample.json — пример для импорта)
-├── frontend/           # Веб-интерфейс на Next.js (свой README, тесты vitest)
+├── frontend/           # Веб-интерфейс на Next.js (свой README, тесты vitest, Dockerfile)
+├── deploy/             # Скрипт автобэкапа для Docker
+├── docker-compose.yml  # Развёртывание на сервере: db, api, web, caddy, backup
 ├── data/               # Личные данные, например media.json (не попадают в git)
 ├── media/
 │   └── posters/        # Скачанные постеры (не попадают в git)

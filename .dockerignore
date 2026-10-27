@@ -1,6 +1,6 @@
 .git
 .venv
-__pycache__
+**/__pycache__
 .pytest_cache
 tests
 docs
@@ -9,5 +9,8 @@ media
 .env
 .idea
 .vscode
-node_modules
+**/node_modules
+frontend
+deploy
+backups
 *.log
