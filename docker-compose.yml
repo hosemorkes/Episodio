@@ -39,6 +39,8 @@ services:
         condition: service_healthy
     volumes:
       - posters:/app/media/posters
+      # data/enrich_review.json (записи для ручного выбора после scripts.enrich) переживает пересборку образа
+      - appdata:/app/data
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
       interval: 10s
@@ -84,6 +86,7 @@ services:
 volumes:
   pgdata:
   posters:
+  appdata:
 
 networks:
   # Существующая внешняя сеть Caddy на сервере (web_gateway); создавать её не нужно

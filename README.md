@@ -450,7 +450,7 @@ episodio.example.com {
 | Сервис | Что делает |
 | --- | --- |
 | `db` | PostgreSQL 16, данные в томе `pgdata`; схема применяется при старте API (`scripts.init_db`) |
-| `api` | FastAPI; снаружи недоступен, к нему ходит только `web`. Постеры в томе `posters` |
+| `api` | FastAPI; снаружи недоступен, к нему ходит только `web`. Постеры в томе `posters`, файл ручной проверки обогащения `/app/data/enrich_review.json` в томе `appdata` (прочитать: `docker compose exec api cat /app/data/enrich_review.json`) |
 | `web` | Next.js, ходит в `api` по `http://api:8000` и подставляет `API_KEY`; для Caddy доступен как `episodio-app:3000` |
 | `backup` | Раз в `BACKUP_INTERVAL_HOURS` часов (24) кладёт в `./backups` дамп `episodio_*.dump` и архив постеров `posters_*.tar.gz`, хранит `BACKUP_KEEP` последних (14) |
 

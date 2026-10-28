@@ -9,8 +9,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend ./backend
 COPY scripts ./scripts
 
-# Постеры лежат в /app/media/posters (том), приложение работает не от root
-RUN useradd --create-home --uid 1000 app && mkdir -p /app/media/posters && chown -R app:app /app/media
+# Постеры лежат в /app/media/posters (том), список записей для ручной проверки обогащения — в /app/data (том);
+# приложение работает не от root
+RUN useradd --create-home --uid 1000 app && mkdir -p /app/media/posters /app/data && chown -R app:app /app/media /app/data
 USER app
 
 EXPOSE 8000
