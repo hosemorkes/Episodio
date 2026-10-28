@@ -218,7 +218,7 @@ Episodio/
 │   ├── stats.py            # GET /stats: распределения, топ, итоги, активность по дням
 │   ├── showcase.py         # Витрины: выборка топа, управление, публичный ответ и постеры
 │   ├── exporter.py         # GET /export: Excel и JSON
-│   └── enrich/             # Внешние источники: base, client, registry, tmdb, shikimori, anilist, openlibrary
+│   └── enrich/             # Внешние источники: base, client, registry, tmdb, tvdb, shikimori, anilist, openlibrary
 ├── scripts/                # schema.sql, init_db, import_json, enrich, backup (запуск: python -m scripts.<имя>)
 ├── tests/                  # pytest; внешние API в тестах не вызываются
 ├── frontend/               # Next.js (шаг 5)
@@ -256,7 +256,7 @@ openpyxl==3.1.5
 | `DB_*` или `DATABASE_URL` | Рабочая база |
 | `TEST_DATABASE_URL` | Тестовая база, обязательно другая (перед каждым тестом её таблицы очищаются; при совпадении с рабочей `pytest` останавливается) |
 | `API_KEY` | Если задан, все эндпоинты, кроме `/`, `/health` и `/posters/...`, требуют заголовок `X-API-Key` |
-| `TMDB_API_KEY`, `SHIKIMORI_USER_AGENT`, `OPENLIBRARY_USER_AGENT` | Внешние источники (шаг 4); AniList настроек не требует |
+| `TMDB_API_KEY`, `TVDB_API_KEY`, `TVDB_PIN`, `SHIKIMORI_USER_AGENT`, `OPENLIBRARY_USER_AGENT` | Внешние источники (шаг 4); AniList настроек не требует |
 | `AUTH_LOGIN`, `AUTH_PASSWORD`, `AUTH_SECRET`, `API_URL`, `PUBLIC_HANDLE` | Фронтенд (шаг 5) |
 
 #### 2.4. Правила бэкенда
@@ -345,6 +345,7 @@ pytest tests/test_schemas.py   # без базы
 | Категория | Источник | Что берём | Настройка |
 |---|---|---|---|
 | `tv_series`, `tv_show`, `cartoon`, `movie` | **TMDB** | постер, жанры, страна (у сериалов), год, оценка, общее число серий завершённых сериалов | `TMDB_API_KEY` (бесплатный) |
+| `tv_series`, `tv_show`, `cartoon`, `movie` | **TheTVDB** (запасной: используется, если TMDB не настроен, или выбирается явно `source=tvdb`) | постер, жанры (переведены), страна, год; общего числа серий и оценки нет | `TVDB_API_KEY` (при необходимости `TVDB_PIN`) |
 | `anime`, `manga` | **Shikimori** (по умолчанию) | постер, жанры по-русски, год, оценка, общее число серий и глав | `SHIKIMORI_USER_AGENT` |
 | `anime`, `manga` | **AniList** (выбирается явно) | постер, жанры (переведены), страна, год, оценка, число серий и глав | не нужна |
 | `book`, `audiobook` | **Open Library** | обложка, автор, год первой публикации | `OPENLIBRARY_USER_AGENT` (необязательно, поднимает лимит) |

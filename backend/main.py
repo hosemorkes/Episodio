@@ -367,7 +367,7 @@ def catalog_categories(enricher: Enricher, category: Optional[str], source: Opti
 def search_in_catalog(
     q: str = Query(..., min_length=2, max_length=100, description="Название или его часть"),
     category: Optional[Category] = None,
-    source: Optional[str] = Query(None, max_length=32, description="Источник: tmdb, shikimori, anilist, openlibrary"),
+    source: Optional[str] = Query(None, max_length=32, description="Источник: tmdb, tvdb, shikimori, anilist, openlibrary"),
     limit: int = Query(10, ge=1, le=20, description="Сколько результатов брать из каждой категории"),
     enricher: Enricher = Depends(get_enricher),
 ):
@@ -391,7 +391,7 @@ def search_in_catalog(
 @app.get("/catalog/popular", response_model=CatalogSearchResponse)
 def popular_in_catalog(
     category: Optional[Category] = None,
-    source: Optional[str] = Query(None, max_length=32, description="Источник: tmdb, shikimori, anilist, openlibrary"),
+    source: Optional[str] = Query(None, max_length=32, description="Источник: tmdb, tvdb, shikimori, anilist, openlibrary"),
     limit: int = Query(12, ge=1, le=30, description="Сколько результатов брать из каждой категории"),
     enricher: Enricher = Depends(get_enricher),
 ):

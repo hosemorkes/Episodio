@@ -188,7 +188,7 @@ def test_fetcher_post_sends_json_and_retries_on_server_error():
 
 def test_registry_lists_sources_and_categories():
     assert sources_for("anime") == sources_for("manga") == ["shikimori", "anilist"]
-    assert sources_for("movie") == ["tmdb"]
+    assert sources_for("movie") == ["tmdb", "tvdb"]
     assert sources_for("podcast") == []
     assert categories_of("anilist") == {"anime", "manga"}
     assert categories_of("nope") == frozenset()

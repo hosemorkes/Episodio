@@ -2,16 +2,18 @@
 from typing import Callable, Optional
 from urllib.parse import urlparse
 
-from backend.enrich.base import Provider, ProviderError, UnsupportedCategoryError
+from backend.enrich.base import Provider, ProviderConfigError, ProviderError, UnsupportedCategoryError
 from backend.enrich.anilist import AniListProvider
 from backend.enrich.client import download_image
 from backend.enrich.openlibrary import OpenLibraryProvider
 from backend.enrich.shikimori import ShikimoriProvider
 from backend.enrich.tmdb import TMDBProvider
+from backend.enrich.tvdb import TVDBProvider
 
-# Категорию может обслуживать несколько провайдеров (аниме и манга: Shikimori и AniList). Источником по умолчанию
-# считается первый подходящий в этом списке; другой выбирается явно (параметр source, опция --source скрипта)
-PROVIDER_CLASSES = (TMDBProvider, ShikimoriProvider, AniListProvider, OpenLibraryProvider)
+# Категорию может обслуживать несколько провайдеров (аниме и манга: Shikimori и AniList; сериалы и фильмы: TMDB и TheTVDB).
+# Источником по умолчанию считается первый подходящий и настроенный в этом списке; другой выбирается явно
+# (параметр source, опция --source скрипта)
+PROVIDER_CLASSES = (TMDBProvider, TVDBProvider, ShikimoriProvider, AniListProvider, OpenLibraryProvider)
 ALL_CATEGORIES = frozenset().union(*(cls.categories for cls in PROVIDER_CLASSES))
 
 
@@ -66,13 +68,23 @@ class Enricher:
     def provider_for(self, category: str, source: Optional[str] = None) -> Provider:
         """Провайдер категории: указанный источник или первый подходящий (по умолчанию).
 
+        Без явного источника ненастроенный провайдер пропускается в пользу следующего (нет ключа TMDB — работает TheTVDB).
         Бросает UnsupportedCategoryError (нет источника для категории) или ProviderConfigError (нет ключа и т.п.).
         """
+        config_error: Optional[ProviderConfigError] = None
         for cls in self._classes:
             if category in cls.categories and (source is None or cls.source == source):
                 if cls not in self._providers:
-                    self._providers[cls] = cls()
+                    try:
+                        self._providers[cls] = cls()
+                    except ProviderConfigError as e:
+                        if source is not None:
+                            raise
+                        config_error = config_error or e
+                        continue
                 return self._providers[cls]
+        if config_error is not None:
+            raise config_error
         if source is not None and any(category in cls.categories for cls in self._classes):
             raise UnsupportedCategoryError(f"Источник «{source}» не обслуживает категорию «{category}»")
         raise UnsupportedCategoryError(f"Для категории «{category}» обогащение не поддерживается")

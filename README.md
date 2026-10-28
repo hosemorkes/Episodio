@@ -329,7 +329,7 @@ Register-ScheduledTask -TaskName "Episodio backup" -Action $action -Trigger $tri
 
 | Категории | Источник | Что заполняется |
 | --- | --- | --- |
-| `tv_series`, `tv_show`, `cartoon`, `movie` | [TMDB](https://www.themoviedb.org) | постер, жанры, страна (у сериалов), год |
+| `tv_series`, `tv_show`, `cartoon`, `movie` | [TMDB](https://www.themoviedb.org) (по умолчанию), [TheTVDB](https://thetvdb.com) (`--source tvdb`, а если ключа TMDB нет, он берётся сам) | постер, жанры, страна, год; у TMDB страна только у сериалов |
 | `anime`, `manga` | [Shikimori](https://shikimori.io) (по умолчанию), [AniList](https://anilist.co) (`--source anilist`) | постер, жанры, год; у AniList ещё страна |
 | `book`, `audiobook` | [Open Library](https://openlibrary.org) | обложка, автор, год первой публикации |
 
@@ -348,7 +348,9 @@ Register-ScheduledTask -TaskName "Episodio backup" -Action $action -Trigger $tri
 
 | Переменная | Для чего | Обязательна |
 | --- | --- | --- |
-| `TMDB_API_KEY` | Ключ TMDB, бесплатный: <https://www.themoviedb.org/settings/api>. Подходит и короткий «API Key», и длинный «API Read Access Token» | для категорий TMDB |
+| `TMDB_API_KEY` | Ключ TMDB, бесплатный: <https://www.themoviedb.org/settings/api>. Подходит и короткий «API Key», и длинный «API Read Access Token» | для категорий TMDB (если не задан, сериалы и фильмы обслуживает TheTVDB) |
+| `TVDB_API_KEY` | Ключ TheTVDB v4: <https://thetvdb.com/dashboard/account/apikey> | для TheTVDB |
+| `TVDB_PIN` | PIN, только для ключей с подпиской («user supported key»); для обычного проектного ключа не нужен | нет |
 | `SHIKIMORI_USER_AGENT` | Название приложения, например `Episodio`. Shikimori требует подписывать им запросы | для `anime` и `manga` |
 | `OPENLIBRARY_USER_AGENT` | Название приложения и контакт, например `Episodio (you@example.com)`. С контактом лимит запросов выше | нет |
 
@@ -375,7 +377,7 @@ Register-ScheduledTask -TaskName "Episodio backup" -Action $action -Trigger $tri
 | Опция | Что делает |
 | --- | --- |
 | `--category` | Обработать только одну категорию (`tv_series`, `tv_show`, `cartoon`, `movie`, `anime`, `manga`, `book`, `audiobook`) |
-| `--source` | Только этот источник: `tmdb`, `shikimori`, `anilist`, `openlibrary`. Без неё категорию обслуживает первый подходящий (у аниме и манги это Shikimori), AniList включается явно: `--category anime --source anilist` |
+| `--source` | Только этот источник: `tmdb`, `tvdb`, `shikimori`, `anilist`, `openlibrary`. Без неё категорию обслуживает первый подходящий и настроенный (у сериалов и фильмов это TMDB, у аниме и манги Shikimori), остальные включаются явно: `--category anime --source anilist`, `--category tv_series --source tvdb` |
 | `--limit N` | Обработать не больше N записей |
 | `--id N` | Обработать одну запись |
 | `--dry-run` | Показать, что изменится, ничего не записывая |
@@ -463,6 +465,25 @@ docker run --rm -v episodio_posters:/dst -v "$PWD/posters:/src:ro" alpine sh -c 
 
 (`posters` в последней команде — папка с вашими постерами рядом с compose-файлом.)
 
+**Первичная загрузка списков из JSON (пустая база на сервере).** Папки `docs/` и `data/` в git не попадают и в образ не входят (`.gitignore`, `.dockerignore`), поэтому файлы копируются вручную, а импорт запускается внутри контейнера `api`. С компьютера (пути и адрес замените на свои):
+
+```bash
+ssh user@server "mkdir -p ~/episodio/import"
+scp data/media.json user@server:~/episodio/import/media.json
+```
+
+На сервере, в папке проекта:
+
+```bash
+docker compose cp import/media.json api:/tmp/media.json
+docker compose exec api python -m scripts.import_json /tmp/media.json --dry-run   # проверка без записи
+docker compose exec api python -m scripts.import_json /tmp/media.json             # импорт
+docker compose exec db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "select category, status, count(*) from media_items group by 1,2 order by 1,2"'
+docker compose exec api rm /tmp/media.json && rm -r import
+```
+
+Можно передать несколько файлов сразу (`/tmp/anime.json /tmp/cartoon.json ...`). Повторный запуск безопасен: дубликаты (русское и оригинальное название + категория) пропускаются. Записи с ошибками (например, `title_ru: null`, поле обязательное) пропускаются и перечисляются в отчёте, остальные загружаются; поправьте JSON и запустите импорт ещё раз. Статус не переносится: все записи получают `planned`. Постеры и описания импорт не подтягивает: после него запустите `docker compose exec api python -m scripts.enrich --category anime --limit 5 --dry-run` (нужны ключи в `.env`), затем без `--dry-run`.
+
 **Восстановление из автобэкапа** — те же команды `pg_restore` с файлом из `./backups`, постеры: `tar -xzf backups/posters_….tar.gz -C <папка>` и копирование в том `episodio_posters`. Обновление версии: `git pull && docker compose up -d --build`. Копии из `./backups` стоит периодически забирать с сервера на другой диск.
 
 ## Тесты
@@ -488,6 +509,7 @@ pytest tests/test_showcases.py   # витрины
 pytest tests/test_export.py      # экспорт в Excel и JSON
 pytest tests/test_docs.py        # docs/plan.md совпадает со schema.sql, requirements.txt и модулями backend
 pytest tests/test_anilist.py     # AniList и выбор источника
+pytest tests/test_tvdb.py        # TheTVDB и запасной выбор источника (без сети)
 pytest tests/test_import.py      # только импорт
 pytest tests/test_posters.py     # только постеры
 pytest tests/test_enrich.py tests/test_enrich_providers.py tests/test_enrich_api.py   # только обогащение (сеть не нужна)
@@ -518,6 +540,7 @@ Episodio/
 │       ├── client.py   # HTTP-клиент: пауза между запросами и повторы
 │       ├── registry.py # Реестр провайдеров по категориям, скачивание постеров
 │       ├── tmdb.py     # Клиент TMDB (сериалы, фильмы)
+│       ├── tvdb.py     # Клиент TheTVDB v4 (сериалы, фильмы): вход по ключу, токен на месяц
 │       ├── shikimori.py   # Клиент Shikimori (аниме, манга)
 │       ├── anilist.py     # Клиент AniList, GraphQL (аниме, манга)
 │       └── openlibrary.py # Клиент Open Library (книги)
@@ -541,6 +564,7 @@ Episodio/
 │   ├── test_export.py         # Экспорт: Excel открывается через openpyxl и сверяется с данными, JSON
 │   ├── test_docs.py           # План проекта не расходится со schema.sql, зависимостями и модулями
 │   ├── test_anilist.py        # AniList, выбор источника в реестре и API (без сети)
+│   ├── test_tvdb.py           # TheTVDB: вход, обновление токена, разбор поиска, запасной источник (без сети)
 │   ├── test_backup.py         # Резервная копия: ротация, команда без пароля (без базы)
 │   ├── test_import.py  # Тесты импорта JSON
 │   ├── test_posters.py # Тесты постеров

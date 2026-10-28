@@ -280,7 +280,7 @@ def test_openlibrary_needs_no_configuration(monkeypatch):
 
 @pytest.fixture
 def clean_env(monkeypatch):
-    for name in ("TMDB_API_KEY", "SHIKIMORI_USER_AGENT", "OPENLIBRARY_USER_AGENT"):
+    for name in ("TMDB_API_KEY", "TVDB_API_KEY", "TVDB_PIN", "SHIKIMORI_USER_AGENT", "OPENLIBRARY_USER_AGENT"):
         monkeypatch.delenv(name, raising=False)
 
     def forbidden():
@@ -320,20 +320,21 @@ def test_build_providers_reports_missing_settings_for_category(clean_env):
 
     providers, skipped = build_providers("movie")
     assert providers == []
-    assert "TMDB_API_KEY" in skipped[0]
+    assert "TMDB_API_KEY" in skipped[0] and "TVDB_API_KEY" in skipped[1]
 
 
 def test_build_providers_skips_unconfigured_ones(clean_env):
     providers, skipped = build_providers(None)
     assert sources(providers) == ["anilist", "openlibrary"]
-    assert len(skipped) == 2
+    assert len(skipped) == 3
 
 
 def test_build_providers_all_configured(clean_env):
     clean_env.setenv("TMDB_API_KEY", "key")
+    clean_env.setenv("TVDB_API_KEY", "key")
     clean_env.setenv("SHIKIMORI_USER_AGENT", "Episodio-tests")
     providers, skipped = build_providers(None)
-    assert sources(providers) == ["anilist", "openlibrary", "shikimori", "tmdb"]
+    assert sources(providers) == ["anilist", "openlibrary", "shikimori", "tmdb", "tvdb"]
     assert skipped == []
 
 
@@ -345,7 +346,9 @@ def test_every_category_has_a_default_provider():
     assert set(owners) == {"tv_series", "tv_show", "cartoon", "movie", "anime", "manga", "book", "audiobook"}
     # источник по умолчанию — первый в списке: у аниме и манги это Shikimori, AniList выбирается явно
     assert owners["anime"] == owners["manga"] == ["shikimori", "anilist"]
-    assert all(len(sources_) == 1 for category, sources_ in owners.items() if category not in ("anime", "manga"))
+    # у сериалов, мультсериалов, телепередач и фильмов два источника: TMDB по умолчанию и TheTVDB
+    assert owners["tv_series"] == owners["tv_show"] == owners["cartoon"] == owners["movie"] == ["tmdb", "tvdb"]
+    assert all(len(sources_) == 1 for category, sources_ in owners.items() if category in ("book", "audiobook"))
 
 
 def test_downloader_routes_by_host():

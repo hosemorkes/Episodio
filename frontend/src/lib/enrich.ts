@@ -26,7 +26,7 @@ export function gapsOf(it: Title): Gap[] {
 
 export const needsReview = (it: Title) => gapsOf(it).length > 0;
 
-const SOURCE_NAMES: Record<string, string> = { tmdb: "TMDB", shikimori: "Shikimori", anilist: "AniList", openlibrary: "Open Library" };
+const SOURCE_NAMES: Record<string, string> = { tmdb: "TMDB", tvdb: "TheTVDB", shikimori: "Shikimori", anilist: "AniList", openlibrary: "Open Library" };
 export const sourceName = (source: string) => SOURCE_NAMES[source] ?? source;
 
 /**
