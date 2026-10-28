@@ -10,7 +10,7 @@
 import os
 from typing import Optional
 
-from backend.enrich.base import Candidate, search_queries
+from backend.enrich.base import Candidate, search_by_titles
 from backend.enrich.client import USER_AGENT, HttpFetcher
 
 SEARCH_URL = "https://openlibrary.org/search.json"
@@ -43,14 +43,15 @@ class OpenLibraryProvider:
 
     def search(self, item) -> list[Candidate]:
         author = (item.author or "").strip() or None
-        for query in search_queries(item):
+
+        def fetch(query: str) -> list[Candidate]:
             docs = self._search(query, author)
             if not docs and author:
                 # Автор в нашем списке мог быть записан иначе (по-русски): ищем только по названию
                 docs = self._search(query, None)
-            if docs:
-                return [self._to_candidate(doc) for doc in docs]
-        return []
+            return [self._to_candidate(doc) for doc in docs]
+
+        return search_by_titles(item, fetch)
 
     def popular(self, category: str, limit: int) -> list[Candidate]:
         """Книги, которые читают на этой неделе (общий список: аудиокниги отдельно Open Library не выделяет)."""

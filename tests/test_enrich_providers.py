@@ -40,8 +40,8 @@ def make_fetcher(handler, **kwargs):
 
 # --- search_queries ---
 
-def test_search_queries_original_first_without_duplicates():
-    assert search_queries(item()) == ["Shingeki no Kyojin", "Атака титанов"]
+def test_search_queries_russian_first_without_duplicates():
+    assert search_queries(item()) == ["Атака титанов", "Shingeki no Kyojin"]
     assert search_queries(item(title_original=None)) == ["Атака титанов"]
     assert search_queries(item(title_original="Атака титанов")) == ["Атака титанов"]
     assert search_queries(item(title_original="  ", title_ru="")) == []
@@ -103,7 +103,7 @@ def test_shikimori_parses_anime_results():
     first, second = provider.search(item())
 
     assert requests[0].url.path == "/api/animes"
-    assert requests[0].url.params["search"] == "Shingeki no Kyojin"
+    assert requests[0].url.params["search"] == "Атака титанов"
     assert int(requests[0].url.params["limit"]) <= 50
 
     assert first.source == "shikimori"
@@ -133,15 +133,15 @@ def test_shikimori_parses_manga_results():
     assert manga.author is None  # API автора не отдаёт
 
 
-def test_shikimori_falls_back_to_russian_title():
+def test_shikimori_falls_back_to_original_title():
     def handler(request):
-        if request.url.params["search"] == "Атака титанов":
+        if request.url.params["search"] == "Shingeki no Kyojin":
             return httpx.Response(200, json=load_fixture("shikimori_animes.json"))
         return httpx.Response(200, json=[])
 
     provider, requests = shikimori(handler)
     assert len(provider.search(item())) == 2
-    assert [r.url.params["search"] for r in requests] == ["Shingeki no Kyojin", "Атака титанов"]
+    assert [r.url.params["search"] for r in requests] == ["Атака титанов", "Shingeki no Kyojin"]
 
 
 def test_shikimori_no_results():
@@ -204,7 +204,7 @@ def book(**overrides):
 
 def test_openlibrary_parses_results():
     provider, requests = openlibrary()
-    dune, messiah = provider.search(book())
+    dune, messiah = provider.search(book(title_ru=None))
 
     params = requests[0].url.params
     assert requests[0].url.path == "/search.json"
@@ -238,15 +238,15 @@ def test_openlibrary_retries_without_author_when_nothing_found():
     assert ["author" in r.url.params for r in requests] == [True, False]
 
 
-def test_openlibrary_falls_back_to_russian_title():
+def test_openlibrary_falls_back_to_original_title():
     def handler(request):
-        if request.url.params["title"] == "Дюна":
+        if request.url.params["title"] == "Dune":
             return httpx.Response(200, json=load_fixture("openlibrary_search.json"))
         return httpx.Response(200, json={"docs": []})
 
     provider, requests = openlibrary(handler)
     assert len(provider.search(book())) == 2
-    assert [r.url.params["title"] for r in requests] == ["Dune", "Дюна"]
+    assert [r.url.params["title"] for r in requests] == ["Дюна", "Dune"]
 
 
 def test_openlibrary_no_results():
@@ -560,3 +560,63 @@ def test_main_uses_first_provider_by_default_and_source_picks_another(db, poster
     arm()
     assert enrich.main(["--category", "anime", "--source", "anilist"]) == 0
     assert second.detail_calls == 1
+
+
+# --- порядок и правила сопоставления ---
+
+
+def test_find_matches_ignores_year_suffix_but_not_the_year_itself():
+    flash = item(title_original="The Flash", title_ru="Флэш", release_year=2014)
+    with_year = Candidate(source="x", external_id="3", title="The Flash (2014)", year=2014)
+    assert find_matches(flash, [with_year]) == [with_year]
+    old = Candidate(source="x", external_id="4", title="The Flash (1990)", year=1990)
+    assert find_matches(flash, [old]) == []  # год в скобках не отменяет проверку года
+
+
+def test_find_matches_does_not_guess_from_partial_titles():
+    card = item(title_original="Arcane: League of Legends", title_ru="Аркейн", release_year=2021)
+    short = Candidate(source="x", external_id="1", title="Arcane", original_title="Arcane", year=2021)
+    assert find_matches(card, [short]) == []  # без догадок «до двоеточия»: такое выбирается вручную
+
+
+def test_search_by_titles_goes_through_queries_until_a_match():
+    from backend.enrich.base import search_by_titles
+
+    wrong = Candidate(source="x", external_id="1", title="Чужое", original_title="Other")
+    right = Candidate(source="x", external_id="2", title="Неважно", original_title="Shingeki no Kyojin")
+    calls = []
+
+    def fetch(query):
+        calls.append(query)
+        return [right] if query == "Shingeki no Kyojin" else [wrong]
+
+    assert search_by_titles(item(release_year=None), fetch) == [right]
+    assert calls == ["Атака титанов", "Shingeki no Kyojin"]  # английский запрос только после русского
+
+
+def test_search_by_titles_stops_when_russian_query_already_matches():
+    from backend.enrich.base import search_by_titles
+
+    right = Candidate(source="x", external_id="2", title="Атака титанов", original_title="Shingeki no Kyojin")
+    calls = []
+
+    def fetch(query):
+        calls.append(query)
+        return [right]
+
+    assert search_by_titles(item(release_year=None), fetch) == [right]
+    assert calls == ["Атака титанов"]
+
+
+def test_search_by_titles_returns_everything_found_when_nothing_matches():
+    from backend.enrich.base import search_by_titles
+
+    first = Candidate(source="x", external_id="1", title="Чужое", original_title="Other")
+    second = Candidate(source="x", external_id="2", title="Другое", original_title="Another")
+
+    def fetch(query):
+        return [first] if query == "Атака титанов" else [first, second]
+
+    # для ручного выбора: все найденные без повторов
+    assert search_by_titles(item(release_year=None), fetch) == [first, second]
+    assert search_by_titles(item(title_ru=None, title_original=None), fetch) == []

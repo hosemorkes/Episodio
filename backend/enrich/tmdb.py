@@ -5,7 +5,7 @@ from typing import Optional
 
 import httpx
 
-from backend.enrich.base import Candidate, ProviderAuthError, ProviderConfigError, ProviderError
+from backend.enrich.base import Candidate, ProviderAuthError, ProviderConfigError, ProviderError, search_by_titles
 from backend.enrich.client import HttpFetcher
 
 API_BASE = "https://api.themoviedb.org/3"
@@ -93,23 +93,23 @@ class TMDBProvider:
     def search(self, item) -> list[Candidate]:
         is_movie = item.category == "movie"
         kind = "movie" if is_movie else "tv"
-        query = (item.title_original or item.title_ru or "").strip()
-        if not query:
-            return []
-
-        params = {"query": query, "language": self.language}
         year_param = "primary_release_year" if is_movie else "first_air_date_year"
-        if item.release_year:
-            params[year_param] = item.release_year
 
-        results = self._get(f"/search/{kind}", params).get("results", [])
-        if not results and item.release_year:
-            # Год в нашем списке мог быть неточным: пробуем без него (дальше год всё равно проверит pick_match)
-            params.pop(year_param)
+        def fetch(query: str) -> list[Candidate]:
+            params = {"query": query, "language": self.language}
+            if item.release_year:
+                params[year_param] = item.release_year
+
             results = self._get(f"/search/{kind}", params).get("results", [])
+            if not results and item.release_year:
+                # Год в нашем списке мог быть неточным: пробуем без него (дальше год всё равно проверит find_matches)
+                params.pop(year_param)
+                results = self._get(f"/search/{kind}", params).get("results", [])
 
-        genres = self.genre_names(kind) if results else {}
-        return [self._to_candidate(kind, result, genres) for result in results]
+            genres = self.genre_names(kind) if results else {}
+            return [self._to_candidate(kind, result, genres) for result in results]
+
+        return search_by_titles(item, fetch)
 
     def popular(self, category: str, limit: int) -> list[Candidate]:
         """Популярное по категории. Сериалы, мультсериалы и ТВ-шоу — один список сериалов, разделённый по жанрам."""

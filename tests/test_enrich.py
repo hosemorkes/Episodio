@@ -101,12 +101,20 @@ def test_pick_match_no_candidates_or_no_match():
     assert pick_match(item(), [candidate(title="Другое", original_title="Other")]) is None
 
 
-def test_pick_match_compares_with_original_title_when_present():
-    """Есть title_original: русское название записи не учитывается, кандидат с другим оригиналом не подходит."""
+def test_pick_match_compares_russian_title_first_then_original():
+    """Сначала русское название записи, потом оригинальное (английское или ромадзи)."""
     other_original = candidate(title="Блудливая Калифорния", original_title="Something Else")
-    assert pick_match(item(), [other_original]) is None
-    # а без title_original сравнение идёт по русскому названию
-    assert pick_match(item(title_original=None), [other_original]) is other_original
+    assert pick_match(item(), [other_original]) is other_original  # совпало русское название
+    by_original = candidate(external_id="9", title="Другое русское", original_title="Californication")
+    assert pick_match(item(), [by_original]) is by_original  # русского совпадения нет, совпало оригинальное
+    assert pick_match(item(), [candidate(title="Другое", original_title="Other")]) is None
+
+    # русское название неоднозначно (два кандидата), оригинальное однозначно: берётся однозначное
+    twin = candidate(external_id="8", title="Блудливая Калифорния", original_title="Californication")
+    twin_other = candidate(external_id="7", title="Блудливая Калифорния", original_title="Another")
+    assert pick_match(item(), [twin_other, twin]) is twin
+    # неоднозначно на обоих шагах -> None
+    assert pick_match(item(), [other_original, twin_other]) is None
 
 
 def test_pick_match_falls_back_to_russian_title():
@@ -323,7 +331,7 @@ def test_tmdb_tv_request_parameters():
     provider.search(item())
 
     search = next(r for r in requests if r.url.path == "/3/search/tv")
-    assert search.url.params["query"] == "Californication"
+    assert search.url.params["query"] == "Блудливая Калифорния"  # сначала русское название
     assert search.url.params["language"] == "ru-RU"
     assert search.url.params["first_air_date_year"] == "2007"
     assert "primary_release_year" not in search.url.params
@@ -388,7 +396,7 @@ def test_tmdb_retries_without_year_when_nothing_found():
     fetcher, _ = make_fetcher(handler)
     provider = TMDBProvider(api_key="0123456789abcdef", fetcher=fetcher)
 
-    assert len(provider.search(item(release_year=2005))) == 2
+    assert len(provider.search(item(title_ru=None, release_year=2005))) == 2
     searches = [r for r in requests if r.url.path == "/3/search/tv"]
     assert len(searches) == 2
     assert "first_air_date_year" not in searches[1].url.params

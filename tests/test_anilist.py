@@ -51,7 +51,7 @@ def anilist(responses, **kwargs):
 
 def test_search_sends_graphql_post_and_parses_results():
     provider, requests = anilist([page(media())])
-    [result] = provider.search(item())
+    [result] = provider.search(item(title_ru=None))
 
     request, body = requests[0]
     assert request.method == "POST" and str(request.url) == API_URL
@@ -72,17 +72,25 @@ def test_search_sends_graphql_post_and_parses_results():
 
 def test_search_manga_uses_manga_type_and_chapter_total():
     provider, requests = anilist([page(media(id=30002, episodes=None, chapters=364, countryOfOrigin="KR"))])
-    [result] = provider.search(item(category="manga", title_original="Berserk"))
+    [result] = provider.search(item(category="manga", title_ru=None, title_original="Berserk"))
     assert requests[0][1]["variables"]["type"] == "MANGA"
     assert result.external_id == "manga:30002"
     assert result.total_chapters == 364 and result.total_episodes is None
     assert result.country == "Южная Корея"
 
 
-def test_search_falls_back_to_russian_title_when_nothing_found():
+def test_search_tries_russian_title_first_then_original():
     provider, requests = anilist([page(), page(media())])
     assert len(provider.search(item())) == 1
-    assert [b["variables"]["search"] for _, b in requests] == ["Shingeki no Kyojin", "Атака титанов"]
+    assert [b["variables"]["search"] for _, b in requests] == ["Атака титанов", "Shingeki no Kyojin"]
+
+
+def test_search_goes_on_to_original_when_russian_results_do_not_match():
+    wrong = media(id=1, title={"romaji": "Other", "english": "Other"})
+    provider, requests = anilist([page(wrong), page(media())])
+    result = provider.search(item())
+    assert [r.external_id for r in result] == ["anime:16498"]  # вернулись результаты запроса, где есть совпадение
+    assert len(requests) == 2
 
 
 def test_search_nothing_found_returns_empty_list():
@@ -92,7 +100,7 @@ def test_search_nothing_found_returns_empty_list():
 
 def test_title_falls_back_to_romaji_and_missing_fields_are_none():
     provider, _ = anilist([page(media(title={"romaji": "Tokyo Ghoul", "english": None}, startDate=None, coverImage=None, genres=None, averageScore=None, countryOfOrigin=None, episodes=0))])
-    [result] = provider.search(item())
+    [result] = provider.search(item(title_ru=None))
     assert result.title == "Tokyo Ghoul" and result.original_title == "Tokyo Ghoul"
     assert result.year is None and result.poster_url is None and result.genres == []
     assert result.rating is None and result.country is None

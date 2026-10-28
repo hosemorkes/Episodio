@@ -17,7 +17,7 @@ from backend.enrich.base import (
     ProviderAuthError,
     ProviderConfigError,
     ProviderError,
-    search_queries,
+    search_by_titles,
 )
 from backend.enrich.client import HttpFetcher
 from backend.enrich.tmdb import COUNTRY_NAMES
@@ -119,7 +119,8 @@ class TVDBProvider:
 
     def search(self, item) -> list[Candidate]:
         kind = "movie" if item.category == "movie" else "series"
-        for query in search_queries(item):
+
+        def fetch(query: str) -> list[Candidate]:
             params = {"query": query, "type": kind, "limit": RESULTS_LIMIT}
             if item.release_year:
                 params["year"] = item.release_year
@@ -128,9 +129,9 @@ class TVDBProvider:
                 # Год в нашем списке мог быть неточным: пробуем без него (дальше год всё равно проверит find_matches)
                 params.pop("year")
                 results = self._get("/search", params).get("data") or []
-            if results:
-                return [self._to_candidate(result) for result in results]
-        return []
+            return [self._to_candidate(result) for result in results]
+
+        return search_by_titles(item, fetch)
 
     # --- разбор ответа ---
 

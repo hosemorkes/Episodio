@@ -8,7 +8,7 @@
 from dataclasses import replace
 from typing import Optional
 
-from backend.enrich.base import Candidate, ProviderError, search_queries
+from backend.enrich.base import Candidate, ProviderError, search_by_titles
 from backend.enrich.client import HttpFetcher
 from backend.enrich.tmdb import COUNTRY_NAMES
 
@@ -94,12 +94,12 @@ class AniListProvider:
 
     def search(self, item) -> list[Candidate]:
         media_type, kind = TYPES[item.category]
-        for query in search_queries(item):
+
+        def fetch(query: str) -> list[Candidate]:
             data = self._query(SEARCH_QUERY, {"search": query, "type": media_type, "perPage": RESULTS_LIMIT})
-            media = ((data.get("Page") or {}).get("media")) or []
-            if media:
-                return [self._to_candidate(kind, m) for m in media]
-        return []
+            return [self._to_candidate(kind, m) for m in ((data.get("Page") or {}).get("media")) or []]
+
+        return search_by_titles(item, fetch)
 
     def popular(self, category: str, limit: int) -> list[Candidate]:
         """Самое популярное (порядок POPULARITY_DESC); у аниме и манги отдельные списки."""

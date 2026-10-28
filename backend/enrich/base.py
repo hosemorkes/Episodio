@@ -1,7 +1,7 @@
 """Общая часть обогащения карточек: кандидат из внешнего API, выбор совпадения и заполнение пустых полей."""
 import re
 from dataclasses import dataclass, field
-from typing import Optional, Protocol
+from typing import Callable, Optional, Protocol
 
 from backend.schemas import normalize_genres
 
@@ -74,15 +74,21 @@ def normalize_title(title: Optional[str]) -> str:
     return " ".join(text.split())
 
 
+_YEAR_SUFFIX = re.compile(r"\s*\(\d{4}\)\s*$")
+
+
 def compact_title(title: Optional[str]) -> str:
-    """Нормализованное название без пробелов: «Quan zhi gao shou» и «Quanzhi Gaoshou» (ромадзи) совпадают."""
-    return normalize_title(title).replace(" ", "")
+    """Нормализованное название без пробелов: «Quan zhi gao shou» и «Quanzhi Gaoshou» (ромадзи) совпадают.
+
+    Год в скобках в конце отбрасывается: каталоги различают одноимённые сериалы так («The Flash (2014)»).
+    """
+    return normalize_title(_YEAR_SUFFIX.sub("", title or "")).replace(" ", "")
 
 
 def search_queries(item) -> list[str]:
-    """Строки для поиска по очереди: сначала оригинальное название, потом русское (без повторов)."""
+    """Строки для поиска по очереди: сначала русское название, потом оригинальное (английское или ромадзи), без повторов."""
     queries = []
-    for title in (item.title_original, item.title_ru):
+    for title in (item.title_ru, item.title_original):
         title = (title or "").strip()
         if title and title not in queries:
             queries.append(title)
@@ -92,30 +98,54 @@ def search_queries(item) -> list[str]:
 def find_matches(item, candidates: list[Candidate]) -> list[Candidate]:
     """Кандидаты, уверенно совпадающие с карточкой.
 
-    Название (без регистра, пунктуации и пробелов) сравнивается с title_original, а если его нет — с title_ru (кандидата берём и по
-    переводному, и по оригинальному названию). Если год известен с обеих сторон, он должен совпадать ±1.
+    Сначала карточка сравнивается по русскому названию (title_ru), потом по оригинальному, английскому или ромадзи
+    (title_original); название сравнивается без регистра, пунктуации и пробелов с переводным и оригинальным названием
+    кандидата. Берётся первое сравнение с единственным совпадением; если такого нет, то первое с несколькими
+    (неоднозначно). Синонимы и другие названия источника не используются: ошибочное совпадение хуже ненайденного,
+    остальное подбирается вручную («Найти данные»). Если год известен с обеих сторон, он должен совпадать ±1.
     Один и тот же кандидат, пришедший дважды, считается один раз.
     """
-    reference = compact_title(item.title_original) or compact_title(item.title_ru)
-    if not reference:
-        return []
-
+    unique = []
     seen = set()
-    matches = []
     for candidate in candidates:
         key = (candidate.source, candidate.external_id)
-        if key in seen:
-            continue
-        seen.add(key)
+        if key not in seen:
+            seen.add(key)
+            unique.append(candidate)
 
-        names = {compact_title(candidate.title), compact_title(candidate.original_title)}
-        if reference not in names:
+    ambiguous: list[Candidate] = []
+    for title in (item.title_ru, item.title_original):
+        reference = compact_title(title)
+        if not reference:
             continue
-        if item.release_year is not None and candidate.year is not None:
-            if abs(item.release_year - candidate.year) > 1:
+        matches = []
+        for candidate in unique:
+            if reference not in {compact_title(candidate.title), compact_title(candidate.original_title)}:
                 continue
-        matches.append(candidate)
-    return matches
+            if item.release_year is not None and candidate.year is not None:
+                if abs(item.release_year - candidate.year) > 1:
+                    continue
+            matches.append(candidate)
+        if len(matches) == 1:
+            return matches
+        ambiguous = ambiguous or matches
+    return ambiguous
+
+
+def search_by_titles(item, fetch: Callable[[str], list[Candidate]]) -> list[Candidate]:
+    """Ищет по русскому названию, затем по оригинальному (английскому или ромадзи): fetch(строка) -> кандидаты.
+
+    Поиск идёт дальше, пока среди найденного нет совпадения с карточкой (find_matches). Если совпадения нет нигде,
+    возвращаются все найденные кандидаты без повторов: из них можно выбрать вручную.
+    """
+    found: list[Candidate] = []
+    for query in search_queries(item):
+        results = fetch(query)
+        if find_matches(item, results):
+            return results
+        known = {(c.source, c.external_id) for c in found}
+        found.extend(c for c in results if (c.source, c.external_id) not in known)
+    return found
 
 
 def pick_match(item, candidates: list[Candidate]) -> Optional[Candidate]:

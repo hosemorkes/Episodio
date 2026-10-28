@@ -1,7 +1,8 @@
 """Обогащение карточек данными из внешних API (постер, жанры, страна, год, автор).
 
-Провайдер выбирается по категории: TMDB (сериалы, фильмы, телепередачи, мультсериалы; если ключа нет, то TheTVDB),
-Shikimori (аниме, манга), Open Library (книги, аудиокниги). Другой источник выбирается через --source.
+Провайдер выбирается по категории: TMDB (сериалы, фильмы, телепередачи; если ключа нет, то TheTVDB), TheTVDB
+(мультсериалы; если ключа нет, то TMDB), Shikimori (аниме, манга), Open Library (книги, аудиокниги).
+Другой источник выбирается через --source.
 
 Запуск из корня проекта:
     python -m scripts.enrich                                  # все записи, которым есть что дополнить
@@ -35,7 +36,7 @@ from backend.enrich.base import (
     find_matches,
     is_empty,
 )
-from backend.enrich.registry import ALL_CATEGORIES, PROVIDER_CLASSES, build_providers, make_downloader
+from backend.enrich.registry import ALL_CATEGORIES, PROVIDER_CLASSES, build_providers, default_providers, make_downloader
 from backend.models import MediaItem
 from backend.posters import PosterError, save_poster
 
@@ -220,11 +221,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     for reason in skipped:
         print(f"Пропущено: {reason}\n", file=sys.stderr)
 
-    # Категорию обслуживает первый подходящий провайдер (порядок PROVIDER_CLASSES); другой выбирается через --source
-    by_category: dict = {}
-    for provider in providers:
-        for category in provider.categories:
-            by_category.setdefault(category, provider)
+    # Категорию обслуживает провайдер по умолчанию (порядок PROVIDER_CLASSES, DEFAULT_SOURCE); другой выбирается через --source
+    by_category = default_providers(providers)
     db = SessionLocal()
     try:
         items = select_items(db, by_category, args.category, args.item_id, args.limit)

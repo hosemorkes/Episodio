@@ -16,6 +16,17 @@ from backend.enrich.tvdb import TVDBProvider
 PROVIDER_CLASSES = (TMDBProvider, TVDBProvider, ShikimoriProvider, AniListProvider, OpenLibraryProvider)
 ALL_CATEGORIES = frozenset().union(*(cls.categories for cls in PROVIDER_CLASSES))
 
+# Категории, у которых источником по умолчанию назначен не первый в PROVIDER_CLASSES: мультсериалы TMDB не выделяет
+# (это жанр сериалов), а TheTVDB ищет их точнее. Если предпочтительный источник не настроен, берётся следующий
+DEFAULT_SOURCE = {"cartoon": "tvdb"}
+
+
+def classes_for(category: str, classes=PROVIDER_CLASSES) -> list:
+    """Классы провайдеров категории в порядке предпочтения: сначала назначенный по умолчанию, дальше как в списке."""
+    matching = [cls for cls in classes if category in cls.categories]
+    preferred = DEFAULT_SOURCE.get(category)
+    return sorted(matching, key=lambda cls: cls.source != preferred)  # сортировка устойчива: порядок остальных сохраняется
+
 
 def categories_of(source: str) -> frozenset[str]:
     """Категории, которые обслуживает источник (пусто, если такого источника нет)."""
@@ -24,7 +35,21 @@ def categories_of(source: str) -> frozenset[str]:
 
 def sources_for(category: str) -> list[str]:
     """Источники категории, по умолчанию первый."""
-    return [cls.source for cls in PROVIDER_CLASSES if category in cls.categories]
+    return [cls.source for cls in classes_for(category)]
+
+
+def default_providers(providers: list[Provider]) -> dict[str, Provider]:
+    """Какой из созданных провайдеров обслуживает категорию по умолчанию (учитывая DEFAULT_SOURCE)."""
+    def rank(category: str, provider: Provider) -> int:
+        order = sources_for(category)
+        return order.index(provider.source) if provider.source in order else len(order)
+
+    chosen: dict[str, Provider] = {}
+    for provider in providers:
+        for category in provider.categories:
+            if category not in chosen or rank(category, provider) < rank(category, chosen[category]):
+                chosen[category] = provider
+    return chosen
 
 
 def build_providers(category: Optional[str] = None, source: Optional[str] = None) -> tuple[list[Provider], list[str]]:
@@ -72,8 +97,8 @@ class Enricher:
         Бросает UnsupportedCategoryError (нет источника для категории) или ProviderConfigError (нет ключа и т.п.).
         """
         config_error: Optional[ProviderConfigError] = None
-        for cls in self._classes:
-            if category in cls.categories and (source is None or cls.source == source):
+        for cls in classes_for(category, self._classes):
+            if source is None or cls.source == source:
                 if cls not in self._providers:
                     try:
                         self._providers[cls] = cls()

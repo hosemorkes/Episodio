@@ -11,7 +11,7 @@ from dataclasses import replace
 from typing import Optional
 from urllib.parse import urljoin, urlparse
 
-from backend.enrich.base import Candidate, ProviderConfigError, ProviderError, search_queries
+from backend.enrich.base import Candidate, ProviderConfigError, ProviderError, search_by_titles
 from backend.enrich.client import HttpFetcher
 
 DEFAULT_BASE_URL = "https://shikimori.io"
@@ -57,11 +57,12 @@ class ShikimoriProvider:
 
     def search(self, item) -> list[Candidate]:
         resource, kind = RESOURCES[item.category]
-        for query in search_queries(item):
+
+        def fetch(query: str) -> list[Candidate]:
             results = self._get(f"/api/{resource}", {"search": query, "limit": RESULTS_LIMIT})
-            if results:
-                return [self._to_candidate(kind, result) for result in results]
-        return []
+            return [self._to_candidate(kind, result) for result in results]
+
+        return search_by_titles(item, fetch)
 
     def popular(self, category: str, limit: int) -> list[Candidate]:
         """Самое популярное (порядок popularity), у манги и аниме отдельные списки."""
