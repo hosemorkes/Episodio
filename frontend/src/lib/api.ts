@@ -4,6 +4,7 @@
  * откуда запрос уходит в FastAPI вместе с X-API-Key. Компоненты сюда напрямую не обращаются.
  */
 import { hasSeasons, isReading } from "./rules";
+import { createSseParser, parseAiEvent, type AiStreamEvent } from "./sse";
 import type { CatalogResult, EnrichCandidate, LogEntry, LogUnit, Showcase, ShowcaseDraft, ShowcaseView, Stats, StatsMarks, StatsRow, Title, TitleStatus, TitleType } from "./types";
 
 // ---------- Форма данных бэкенда (backend/schemas.py) ----------
@@ -445,6 +446,45 @@ export function toLogEntry(a: ApiLogEntry, now = new Date()): LogEntry {
   };
 }
 
+// ---------- Эпи: диалоги ----------
+
+export interface AiConversation {
+  id: number;
+  title: string;
+  updatedAt: string;
+}
+
+export interface AiMessage {
+  id: number;
+  role: "user" | "assistant";
+  content: string;
+}
+
+interface ApiAiConversation {
+  id: number;
+  title: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface ApiAiMessage {
+  id: number;
+  role: string;
+  content: string;
+}
+
+export const toAiConversation = (a: ApiAiConversation): AiConversation => ({ id: a.id, title: a.title, updatedAt: a.updated_at });
+
+/** Только реплики людей и ответы ассистента: служебные роли (system, tool) в чате не показываем */
+export const toAiMessages = (list: ApiAiMessage[]): AiMessage[] =>
+  list.filter((m) => m.role === "user" || m.role === "assistant").map((m) => ({ id: m.id, role: m.role as AiMessage["role"], content: m.content }));
+
+/** Обработчики потока ответа: onChunk — кусок текста, onTool — Эпи вызвала инструмент (имя) */
+export interface AiStreamHandlers {
+  onChunk: (text: string) => void;
+  onTool?: (name: string) => void;
+}
+
 // ---------- Клиент ----------
 
 export class ApiError extends Error {
@@ -492,6 +532,43 @@ async function call<T>(path: string, init?: RequestInit, timeoutMs = TIMEOUT_MS)
   const body: unknown = await res.json().catch(() => null);
   if (!res.ok) throw new ApiError(res.status, errorMessage(body, res.status));
   return body as T;
+}
+
+/** Поток ответа Эпи: POST с телом {content}, в ответ SSE (см. backend/ai); конец потока — [DONE] или закрытие соединения */
+async function streamAiMessage(path: string, content: string, handlers: AiStreamHandlers, signal?: AbortSignal): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch(BASE + path, { ...json("POST", { content }), signal });
+  } catch (e) {
+    if (e instanceof Error && e.name === "AbortError") throw e;
+    throw new ApiError(0, "Нет связи с сервером");
+  }
+  if (!res.ok || !res.body) {
+    const body: unknown = await res.json().catch(() => null);
+    throw new ApiError(res.status, errorMessage(body, res.status));
+  }
+
+  let failure: string | null = null;
+  const feed = createSseParser((data) => {
+    const event: AiStreamEvent | "done" | null = parseAiEvent(data);
+    if (event === null || event === "done") return;
+    if ("chunk" in event) handlers.onChunk(event.chunk);
+    else if ("tool" in event) handlers.onTool?.(event.tool);
+    else failure = event.error;
+  });
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      feed(decoder.decode(value, { stream: true }));
+    }
+  } catch (e) {
+    if (e instanceof Error && e.name === "AbortError") throw e;
+    throw new ApiError(0, "Соединение прервано");
+  }
+  if (failure) throw new ApiError(502, failure);
 }
 
 const json = (method: string, body: unknown): RequestInit => ({
@@ -561,6 +638,18 @@ export const api = {
   /** Предпросмотр по параметрам, ничего не сохраняя */
   previewShowcase: async (d: ShowcaseDraft): Promise<ShowcaseView> =>
     toShowcaseView(await call<ApiShowcaseView>("/showcases/preview", json("POST", toApiShowcaseFilter(d)))),
+
+  listConversations: async (): Promise<AiConversation[]> => (await call<ApiAiConversation[]>("/ai/conversations")).map(toAiConversation),
+  createConversation: async (title?: string): Promise<AiConversation> =>
+    toAiConversation(await call<ApiAiConversation>("/ai/conversations", json("POST", title ? { title } : {}))),
+  /** Последние 30 реплик диалога по порядку */
+  listAiMessages: async (conversationId: number): Promise<AiMessage[]> => toAiMessages(await call<ApiAiMessage[]>(`/ai/conversations/${conversationId}/messages`)),
+  /**
+   * Отправляет реплику и читает ответ Эпи потоком SSE: куски текста приходят в onChunk по мере генерации.
+   * Ошибка модели посреди потока — ApiError(502); signal прерывает чтение (запрос к FastAPI тоже обрывается).
+   */
+  streamAiMessage: (conversationId: number, content: string, handlers: AiStreamHandlers, signal?: AbortSignal) =>
+    streamAiMessage(`/ai/conversations/${conversationId}/messages`, content, handlers, signal),
 
   /** Жанры из БД для фильтра (с заглавной буквы) */
   listGenres: async (): Promise<string[]> => (await call<string[]>("/genres")).map(capitalize),

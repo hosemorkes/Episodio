@@ -10,6 +10,7 @@ import {
   filenameFrom,
   fromServerExport,
   ITEMS_PAGE,
+  toAiMessages,
   posterSrc,
   STATUS_FROM_API,
   STATUS_TO_API,
@@ -800,5 +801,56 @@ describe("клиент", () => {
     await expect(api.progress(1, 1)).rejects.toMatchObject({ status: 409 });
     stub(respond(502, { detail: "Бэкенд недоступен" }));
     await expect(api.listItems()).rejects.toMatchObject({ status: 502 });
+  });
+});
+
+describe("Эпи: диалоги и поток ответа", () => {
+  it("toAiMessages оставляет только реплики людей и ответы ассистента", () => {
+    const list = toAiMessages([
+      { id: 1, role: "user", content: "Привет" },
+      { id: 2, role: "tool", content: "{}" },
+      { id: 3, role: "assistant", content: "Здравствуйте!" },
+    ]);
+    expect(list).toEqual([
+      { id: 1, role: "user", content: "Привет" },
+      { id: 3, role: "assistant", content: "Здравствуйте!" },
+    ]);
+  });
+
+  const sseResponse = (parts: string[], init: ResponseInit = { status: 200 }) =>
+    new Response(
+      new ReadableStream({
+        start(c) {
+          const enc = new TextEncoder();
+          parts.forEach((p) => c.enqueue(enc.encode(p)));
+          c.close();
+        },
+      }),
+      init,
+    );
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("streamAiMessage отдаёт куски и инструменты по мере прихода, в том числе из разорванных событий", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(sseResponse(['data: {"tool":"search_library"}\n\ndata: {"chunk":"При', 'вет"}\n\ndata: {"chunk":"!"}\n\ndata: [DONE]\n\n']));
+    vi.stubGlobal("fetch", fetchMock);
+    const chunks: string[] = [];
+    const tools: string[] = [];
+    await api.streamAiMessage(5, "Привет", { onChunk: (t) => chunks.push(t), onTool: (n) => tools.push(n) });
+    expect(chunks).toEqual(["Привет", "!"]);
+    expect(tools).toEqual(["search_library"]);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("/api/backend/ai/conversations/5/messages");
+    expect(JSON.parse(init.body)).toEqual({ content: "Привет" });
+  });
+
+  it("ошибка внутри потока становится ApiError", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(sseResponse(['data: {"error":"DeepSeek недоступен"}\n\ndata: [DONE]\n\n'])));
+    await expect(api.streamAiMessage(1, "x", { onChunk: () => undefined })).rejects.toMatchObject({ status: 502, message: "DeepSeek недоступен" });
+  });
+
+  it("503 до начала потока — ApiError с текстом сервера", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail: "Эпи недоступна" }), { status: 503 })));
+    await expect(api.streamAiMessage(1, "x", { onChunk: () => undefined })).rejects.toMatchObject({ status: 503, message: "Эпи недоступна" });
   });
 });

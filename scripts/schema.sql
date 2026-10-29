@@ -118,3 +118,24 @@ CREATE TABLE IF NOT EXISTS showcases (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CHECK (month IS NULL OR year IS NOT NULL)
 );
+
+-- AI-компаньон «Эпи»: диалоги и сообщения (включая вызовы инструментов модели)
+CREATE TABLE IF NOT EXISTS ai_conversations (
+    id         SERIAL PRIMARY KEY,
+    title      VARCHAR(255) NOT NULL DEFAULT 'Новый диалог',
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS ai_messages (
+    id              SERIAL PRIMARY KEY,
+    conversation_id INTEGER NOT NULL REFERENCES ai_conversations(id) ON DELETE CASCADE,
+    role            VARCHAR(20) NOT NULL
+        CHECK (role IN ('user','assistant','system','tool')),
+    content         TEXT NOT NULL,
+    tool_calls      JSONB,                        -- вызовы инструментов в сообщении ассистента (формат OpenAI)
+    tool_call_id    VARCHAR(100),                 -- у сообщения роли tool: на какой вызов оно отвечает
+    created_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_messages_conversation ON ai_messages (conversation_id, id);

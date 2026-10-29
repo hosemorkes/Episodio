@@ -325,3 +325,43 @@ class ShowcaseView(BaseModel):
     year: Optional[int] = None
     month: Optional[int] = None
     items: list[ShowcaseItem]
+
+
+# --- AI-компаньон «Эпи» ---
+
+AiRole = Literal["user", "assistant", "system", "tool"]
+
+
+class AiConversationCreate(BaseModel):
+    title: Optional[str] = Field(None, min_length=1, max_length=255)
+
+
+class AiConversationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class AiMessageCreate(BaseModel):
+    content: str = Field(min_length=1, max_length=4000)
+
+    @field_validator("content")
+    @classmethod
+    def not_blank(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Сообщение не может быть пустым")
+        return value
+
+
+class AiMessageResponse(BaseModel):
+    """Сообщение для интерфейса: только реплики пользователя и ответы ассистента (служебные вызовы инструментов не отдаются)."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    role: AiRole
+    content: str
+    created_at: datetime

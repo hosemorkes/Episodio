@@ -7,6 +7,7 @@ from typing import Literal, Optional
 
 import httpx
 from fastapi import Depends, FastAPI, File, HTTPException, Query, Request, Security, UploadFile, status
+from fastapi.responses import StreamingResponse
 from fastapi.security import APIKeyHeader
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import any_, func, literal, or_, text
@@ -14,7 +15,10 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from backend import catalog, exporter, posters, progress, showcase, stats
-from backend.database import get_db
+from backend.ai import conversations as ai_conversations
+from backend.ai.agent import AgentConfigError, DeepSeekSettings, run_agent
+from backend.ai.tools import ToolContext
+from backend.database import SessionLocal, get_db
 from backend.enrich.base import (
     Candidate,
     ProviderAuthError,
@@ -25,8 +29,12 @@ from backend.enrich.base import (
     is_empty,
 )
 from backend.enrich.registry import Enricher
-from backend.models import MediaItem, ProgressLog
+from backend.models import AiConversation, MediaItem, ProgressLog
 from backend.schemas import (
+    AiConversationCreate,
+    AiConversationResponse,
+    AiMessageCreate,
+    AiMessageResponse,
     CatalogAddRequest,
     CatalogSearchResponse,
     Category,
@@ -549,3 +557,91 @@ def enrich_apply(
     db.commit()
     db.refresh(db_item)
     return EnrichApplyResponse(item=MediaItemResponse.model_validate(db_item), changed=changed)
+
+
+# --- AI-компаньон «Эпи»: диалоги с историей в БД, ответ приходит потоком SSE ---
+
+def get_conversation_or_404(db: Session, conversation_id: int) -> AiConversation:
+    conversation = db.get(AiConversation, conversation_id)
+    if conversation is None:
+        raise HTTPException(status_code=404, detail="Диалог не найден")
+    return conversation
+
+
+@app.get("/ai/conversations", response_model=list[AiConversationResponse])
+def list_ai_conversations(db: Session = Depends(get_db)):
+    """Диалоги, недавно обновлённые первыми."""
+    return db.query(AiConversation).order_by(AiConversation.updated_at.desc(), AiConversation.id.desc()).all()
+
+
+@app.post("/ai/conversations", response_model=AiConversationResponse, status_code=status.HTTP_201_CREATED)
+def create_ai_conversation(body: Optional[AiConversationCreate] = None, db: Session = Depends(get_db)):
+    conversation = AiConversation(title=body.title if body and body.title else ai_conversations.DEFAULT_TITLE)
+    db.add(conversation)
+    db.commit()
+    db.refresh(conversation)
+    return conversation
+
+
+@app.get("/ai/conversations/{conversation_id}/messages", response_model=list[AiMessageResponse])
+def list_ai_messages(conversation_id: int, db: Session = Depends(get_db)):
+    """Последние 30 реплик диалога (без служебных вызовов инструментов) по порядку."""
+    get_conversation_or_404(db, conversation_id)
+    return ai_conversations.last_rows(db, conversation_id, visible_only=True)
+
+
+@app.post("/ai/conversations/{conversation_id}/messages")
+async def send_ai_message(
+    conversation_id: int,
+    body: AiMessageCreate,
+    db: Session = Depends(get_db),
+    enricher: Enricher = Depends(get_enricher),
+):
+    """Сохраняет реплику пользователя и стримит ответ Эпи событиями SSE.
+
+    События: {"chunk": "..."} — кусок ответа; {"tool": "имя"} — Эпи вызвала инструмент; {"error": "..."} — сбой;
+    в конце всегда [DONE]. Вызовы инструментов и полный ответ сохраняются в ai_messages.
+    """
+    try:
+        settings = DeepSeekSettings.from_env()
+    except AgentConfigError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
+
+    conversation = get_conversation_or_404(db, conversation_id)
+    ai_conversations.add_message(db, conversation, {"role": "user", "content": body.content})
+    history = ai_conversations.to_chat_messages(ai_conversations.last_rows(db, conversation_id))
+
+    async def events():
+        # Своя сессия: сессия запроса к моменту стриминга может быть уже закрыта
+        session = SessionLocal()
+        conv = None
+        chunks: list[str] = []  # текст, ещё не сохранённый как сообщение: при обрыве клиента сохраняем что успели
+        try:
+            conv = session.get(AiConversation, conversation_id)
+            try:
+                async for event in run_agent(history, ToolContext(enricher=enricher), settings):
+                    if event["type"] == "chunk":
+                        chunks.append(event["text"])
+                        yield ai_conversations.sse({"chunk": event["text"]})
+                    elif event["type"] == "tool":
+                        yield ai_conversations.sse({"tool": event["name"]})
+                    else:
+                        ai_conversations.add_message(session, conv, event["message"])
+                        chunks.clear()
+            except httpx.HTTPStatusError as e:
+                code = e.response.status_code
+                reason = "ключ DeepSeek не принят" if code in (401, 403) else "лимит запросов или баланс исчерпан" if code in (402, 429) else f"ошибка {code}"
+                yield ai_conversations.sse({"error": f"DeepSeek недоступен: {reason}"})
+            except httpx.HTTPError:
+                yield ai_conversations.sse({"error": "DeepSeek не ответил, попробуйте позже"})
+            yield ai_conversations.SSE_DONE
+        finally:
+            if chunks and conv is not None:
+                ai_conversations.add_message(session, conv, {"role": "assistant", "content": "".join(chunks)})
+            session.close()
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"},
+    )

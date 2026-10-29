@@ -22,6 +22,8 @@ SCHEMA_PATH = Path(__file__).resolve().parent / "schema.sql"
 RESET_SQL = [
     "DROP TRIGGER IF EXISTS trg_media_items_updated_at ON media_items",
     "DROP TRIGGER IF EXISTS trg_media_items_finished_at ON media_items",
+    "DROP TABLE IF EXISTS ai_messages",
+    "DROP TABLE IF EXISTS ai_conversations",
     "DROP TABLE IF EXISTS showcases",
     "DROP TABLE IF EXISTS progress_log",
     "DROP TABLE IF EXISTS media_items",

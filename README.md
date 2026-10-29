@@ -64,7 +64,7 @@ Episodio — личное хранилище для аниме, мультсер
 
 Все команды выполняются из корня проекта.
 
-Чтобы сбросить рабочую базу и создать таблицы заново, запусти `python -m scripts.init_db --reset`. Скрипт спросит подтверждение, потому что все данные в `media_items`, `progress_log` и `showcases` будут удалены.
+Чтобы сбросить рабочую базу и создать таблицы заново, запусти `python -m scripts.init_db --reset`. Скрипт спросит подтверждение, потому что все данные в `media_items`, `progress_log`, `showcases` и диалогов Эпи (`ai_conversations`, `ai_messages`) будут удалены.
 
 Если база была создана до появления полей `description`, `total_episodes`, `total_chapters`, `finished_at` и таблиц `progress_log` и `showcases`, достаточно снова выполнить `python -m scripts.init_db`: схема добавит недостающее, существующие записи не затрагиваются.
 
@@ -86,6 +86,9 @@ Episodio — личное хранилище для аниме, мультсер
 | `GET /export` | Выгрузка библиотеки файлом: `format=xlsx` (Excel, по умолчанию) или `format=json`. Подробнее ниже |
 | `GET /stats` | Статистика: распределения по библиотеке и отметки журнала за период. Параметры: `from`, `to` (даты `YYYY-MM-DD`, включительно; по умолчанию последние 7 дней), `limit` (1–50, по умолчанию 10). Подробнее ниже |
 | `GET /showcases`, `POST /showcases`, `PATCH /showcases/{id}`, `DELETE /showcases/{id}` | Управление витринами (публичными страницами «мой топ»). Подробнее ниже |
+| `GET /ai/conversations`, `POST /ai/conversations` | Диалоги с AI-компаньоном «Эпи» (нужны `DEEPSEEK_API_KEY`, по желанию `TAVILY_API_KEY`) |
+| `GET /ai/conversations/{id}/messages` | Последние 30 реплик диалога |
+| `POST /ai/conversations/{id}/messages` | Тело `{"content": "..."}`; ответ — поток SSE: `data: {"chunk": "..."}`, `data: {"tool": "имя"}` (Эпи вызвала инструмент), `data: {"error": "..."}`, в конце `data: [DONE]`. Эпи только читает: библиотека открывается в транзакции `READ ONLY` |
 | `POST /showcases/preview` | Предпросмотр витрины по параметрам, ничего не сохраняя |
 | `GET /public/showcases/{slug}` | Публичное содержимое витрины (только поля `ShowcaseItem`); 404 для неизвестной и отключённой |
 | `GET /public/showcases/{slug}/posters/{файл}` | Постер записи, которая входит в эту публичную витрину |

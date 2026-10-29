@@ -1,5 +1,5 @@
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.sql import func
 
 from backend.database import Base
@@ -89,3 +89,28 @@ class Showcase(Base):
     max_items = Column(Integer, nullable=False, server_default="8")
     is_public = Column(Boolean, nullable=False, server_default="false")
     created_at = Column(DateTime, nullable=False, server_default=func.current_timestamp())
+
+
+class AiConversation(Base):
+    """Таблица ai_conversations: диалог с «Эпи». Структура повторяет scripts/schema.sql."""
+
+    __tablename__ = "ai_conversations"
+
+    id = Column(Integer, primary_key=True)
+    title = Column(String(255), nullable=False, server_default="Новый диалог")
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class AiMessage(Base):
+    """Таблица ai_messages: сообщение диалога (user, assistant, system или tool)."""
+
+    __tablename__ = "ai_messages"
+
+    id = Column(Integer, primary_key=True)
+    conversation_id = Column(Integer, ForeignKey("ai_conversations.id", ondelete="CASCADE"), nullable=False)
+    role = Column(String(20), nullable=False)
+    content = Column(Text, nullable=False)
+    tool_calls = Column(JSONB(none_as_null=True))  # None -> SQL NULL, а не JSON null
+    tool_call_id = Column(String(100))
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())

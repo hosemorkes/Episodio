@@ -25,7 +25,7 @@
 
 ### Шаг 1. Проектирование базы данных (модели данных)
 
-Файл `scripts/schema.sql` — единственный источник правды о структуре БД. В ней три таблицы: `media_items` (библиотека), `progress_log` (журнал отметок для ленты активности и статистики) и `showcases` (публичные страницы «мой топ»). Скрипт идемпотентный, его можно запускать повторно (`python -m scripts.init_db`): на старой базе он добавит недостающее и не тронет записи.
+Файл `scripts/schema.sql` — единственный источник правды о структуре БД. В ней пять таблиц: `media_items` (библиотека), `progress_log` (журнал отметок для ленты активности и статистики), `showcases` (публичные страницы «мой топ»), `ai_conversations` и `ai_messages` (диалоги с AI-компаньоном «Эпи»). Скрипт идемпотентный, его можно запускать повторно (`python -m scripts.init_db`): на старой базе он добавит недостающее и не тронет записи.
 
 > Блок ниже — дословная копия `scripts/schema.sql`. Тест `tests/test_docs.py` следит, чтобы они не расходились; при любом расхождении верить файлу.
 
@@ -150,6 +150,27 @@ CREATE TABLE IF NOT EXISTS showcases (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CHECK (month IS NULL OR year IS NOT NULL)
 );
+
+-- AI-компаньон «Эпи»: диалоги и сообщения (включая вызовы инструментов модели)
+CREATE TABLE IF NOT EXISTS ai_conversations (
+    id         SERIAL PRIMARY KEY,
+    title      VARCHAR(255) NOT NULL DEFAULT 'Новый диалог',
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS ai_messages (
+    id              SERIAL PRIMARY KEY,
+    conversation_id INTEGER NOT NULL REFERENCES ai_conversations(id) ON DELETE CASCADE,
+    role            VARCHAR(20) NOT NULL
+        CHECK (role IN ('user','assistant','system','tool')),
+    content         TEXT NOT NULL,
+    tool_calls      JSONB,                        -- вызовы инструментов в сообщении ассистента (формат OpenAI)
+    tool_call_id    VARCHAR(100),                 -- у сообщения роли tool: на какой вызов оно отвечает
+    created_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_messages_conversation ON ai_messages (conversation_id, id);
 ```
 
 #### Соответствие полей JSON и таблицы
@@ -201,6 +222,8 @@ CREATE TABLE IF NOT EXISTS showcases (
 12. **Витрины (`showcases`).** Витрина хранит не список записей, а фильтр: категория (или все), год и месяц завершения (по `finished_at`; месяц только вместе с годом), число мест (1–50), название и адрес `slug` (латиница, цифры, дефисы, уникальный). Содержимое считается при каждом открытии: завершённые записи с оценкой, по убыванию оценки. Флаг `is_public` по умолчанию `FALSE`: пока он не включён, публичный адрес отвечает 404 так же, как для несуществующей витрины.
 
 
+13. **AI-компаньон «Эпи» (`ai_conversations`, `ai_messages`).** Диалоги хранятся в БД; в `ai_messages` пишутся реплики пользователя, ответы ассистента, вызовы инструментов (`tool_calls`, JSONB) и их результаты (роль `tool`, `tool_call_id`). Эпи **только читает**: все инструменты (`backend/ai/tools.py`) ходят в базу через `get_readonly_db()` — транзакция `SET TRANSACTION READ ONLY`, запись PostgreSQL отклонит сам. Модель — DeepSeek (`DEEPSEEK_*`), веб-поиск — Tavily (`TAVILY_API_KEY`). Интерфейсу отдаются только реплики и ответы, без служебных сообщений.
+
 ### Шаг 2. Разработка бэкенда (FastAPI)
 
 #### 2.1. Структура проекта
@@ -209,7 +232,7 @@ CREATE TABLE IF NOT EXISTS showcases (
 Episodio/
 ├── backend/                # Пакет приложения (импорты абсолютные: from backend.xxx import ...)
 │   ├── database.py         # Подключение к PostgreSQL (DATABASE_URL или DB_*), сессия get_db
-│   ├── models.py           # Модели SQLAlchemy: MediaItem, ProgressLog, Showcase (повторяют schema.sql)
+│   ├── models.py           # Модели SQLAlchemy: MediaItem, ProgressLog, Showcase, AiConversation, AiMessage (повторяют schema.sql)
 │   ├── schemas.py          # Pydantic-схемы: что API принимает и отдаёт
 │   ├── main.py             # Приложение FastAPI, защита ключом, эндпоинты библиотеки, каталога и обогащения
 │   ├── progress.py         # Отметка серий и глав, откат, журнал progress_log
@@ -218,6 +241,7 @@ Episodio/
 │   ├── stats.py            # GET /stats: распределения, топ, итоги, активность по дням
 │   ├── showcase.py         # Витрины: выборка топа, управление, публичный ответ и постеры
 │   ├── exporter.py         # GET /export: Excel и JSON
+│   ├── ai/                 # AI-компаньон «Эпи»: agent (DeepSeek, function calling, SSE), tools (только чтение), tavily, conversations
 │   └── enrich/             # Внешние источники: base, client, registry, tmdb, tvdb, shikimori, anilist, openlibrary
 ├── scripts/                # schema.sql, init_db, import_json, enrich, backup (запуск: python -m scripts.<имя>)
 ├── tests/                  # pytest; внешние API в тестах не вызываются
@@ -285,6 +309,7 @@ openpyxl==3.1.5
 | Статистика | `GET /stats` |
 | Витрины | `GET/POST /showcases`, `PATCH/DELETE /showcases/{id}`, `POST /showcases/preview`, `GET /public/showcases/{slug}`, `GET /public/showcases/{slug}/posters/{файл}` |
 | Экспорт | `GET /export?format=xlsx|json` |
+| AI-компаньон | `GET/POST /ai/conversations`, `GET /ai/conversations/{id}/messages` (последние 30), `POST /ai/conversations/{id}/messages` (ответ потоком SSE: `{"chunk"}`, `{"tool"}`, `{"error"}`, затем `[DONE]`) |
 
 #### 2.6. Первый запуск
 

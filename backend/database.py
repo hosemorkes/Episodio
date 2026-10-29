@@ -1,7 +1,8 @@
 import os
+from contextlib import contextmanager
 
 from dotenv import load_dotenv
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.engine import URL, make_url
 from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -45,4 +46,20 @@ def get_db():
     try:
         yield db
     finally:
+        db.close()
+
+
+@contextmanager
+def get_readonly_db():
+    """Сессия только для чтения: транзакция открывается как READ ONLY, и PostgreSQL сам отклонит любую запись.
+
+    Используется инструментами AI-агента: даже ошибка в коде или подмена запроса моделью не изменит данные.
+    """
+    db = SessionLocal()
+    try:
+        # Должна быть первой командой транзакции, иначе PostgreSQL откажет
+        db.execute(text("SET TRANSACTION READ ONLY"))
+        yield db
+    finally:
+        db.rollback()
         db.close()

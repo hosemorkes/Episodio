@@ -23,6 +23,8 @@ describe("upstreamUrl", () => {
     expect(upstreamUrl(BASE, ["showcases", "preview"])).toBe(`${BASE}/showcases/preview`);
     expect(upstreamUrl(BASE, ["posters", "42.jpg"])).toBe(`${BASE}/posters/42.jpg`);
     expect(upstreamUrl(BASE, ["health"])).toBe(`${BASE}/health`);
+    expect(upstreamUrl(BASE, ["ai", "conversations"])).toBe(`${BASE}/ai/conversations`);
+    expect(upstreamUrl(BASE, ["ai", "conversations", "3", "messages"])).toBe(`${BASE}/ai/conversations/3/messages`);
   });
   it("список и создание: добавляет слэш, чтобы не было редиректа FastAPI", () => {
     expect(upstreamUrl(BASE, ["items"], "?status=watching")).toBe(`${BASE}/items/?status=watching`);
@@ -68,6 +70,12 @@ describe("downstreamHeaders", () => {
     expect(h.get("etag")).toBe('"a"');
     expect(h.get("set-cookie")).toBeNull();
     expect(h.get("server")).toBeNull();
+  });
+  it("поток SSE доходит без буферизации", () => {
+    const h = downstreamHeaders(new Headers({ "content-type": "text/event-stream", "cache-control": "no-cache, no-transform", "x-accel-buffering": "no" }));
+    expect(h.get("content-type")).toBe("text/event-stream");
+    expect(h.get("cache-control")).toBe("no-cache, no-transform");
+    expect(h.get("x-accel-buffering")).toBe("no");
   });
   it("имя файла выгрузки доходит до браузера", () => {
     const h = downstreamHeaders(new Headers({ "content-disposition": 'attachment; filename="episodio-2026-10-25.xlsx"' }));
