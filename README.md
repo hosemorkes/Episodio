@@ -450,7 +450,7 @@ episodio.example.com {
 | Сервис | Что делает |
 | --- | --- |
 | `db` | PostgreSQL 16, данные в томе `pgdata`; схема применяется при старте API (`scripts.init_db`) |
-| `api` | FastAPI; снаружи недоступен, к нему ходит только `web`. Постеры в томе `posters`, файл ручной проверки обогащения `/app/data/enrich_review.json` в томе `appdata` (прочитать: `docker compose exec api cat /app/data/enrich_review.json`) |
+| `api` | FastAPI; снаружи недоступен, к нему ходит только `web`. Постеры в папке хоста `./media/posters` (владелец uid 1000: `sudo chown -R 1000:1000 media/posters`), файл ручной проверки обогащения `/app/data/enrich_review.json` в томе `appdata` (прочитать: `docker compose exec api cat /app/data/enrich_review.json`) |
 | `web` | Next.js, ходит в `api` по `http://api:8000` и подставляет `API_KEY`; для Caddy доступен как `episodio-app:3000` |
 | `backup` | Раз в `BACKUP_INTERVAL_HOURS` часов (24) кладёт в `./backups` дамп `episodio_*.dump` и архив постеров `posters_*.tar.gz`, хранит `BACKUP_KEEP` последних (14) |
 
@@ -461,10 +461,22 @@ episodio.example.com {
 ```bash
 docker compose cp episodio_20261025_030000.dump db:/tmp/e.dump
 docker compose exec db sh -c 'pg_restore --no-owner --clean --if-exists -U "$POSTGRES_USER" -d "$POSTGRES_DB" /tmp/e.dump'
-docker run --rm -v episodio_posters:/dst -v "$PWD/posters:/src:ro" alpine sh -c 'cp -a /src/. /dst/ && chown -R 1000:1000 /dst'
+cp -a posters/. media/posters/ && sudo chown -R 1000:1000 media/posters
 ```
 
-(`posters` в последней команде — папка с вашими постерами рядом с compose-файлом.)
+(`posters` в последней команде — папка с вашими постерами, скопированная на сервер; `media/posters` — папка проекта, которую compose подключает в `api`.)
+
+**Если постеры уже лежат в Docker-томе `episodio_posters`** (старая схема) и их нужно перенести в `./media/posters`. Из папки проекта на сервере, до `git pull` и `docker compose up -d --build`:
+
+```bash
+docker compose stop api web
+mkdir -p media/posters
+docker run --rm -v episodio_posters:/src:ro -v "$PWD/media/posters:/dst" alpine sh -c 'cp -a /src/. /dst/ && chown -R 1000:1000 /dst'
+ls media/posters | wc -l      # число файлов должно совпасть с томом
+docker run --rm -v episodio_posters:/src:ro alpine sh -c 'ls /src | wc -l'
+```
+
+Старый том после проверки можно удалить: `docker volume rm episodio_posters`.
 
 **Первичная загрузка списков из JSON (пустая база на сервере).** Папки `docs/` и `data/` в git не попадают и в образ не входят (`.gitignore`, `.dockerignore`), поэтому файлы копируются вручную, а импорт запускается внутри контейнера `api`. С компьютера (пути и адрес замените на свои):
 
@@ -485,7 +497,7 @@ docker compose exec api rm /tmp/media.json && rm -r import
 
 Можно передать несколько файлов сразу (`/tmp/anime.json /tmp/cartoon.json ...`). Повторный запуск безопасен: дубликаты (русское и оригинальное название + категория) пропускаются. Записи с ошибками (например, `title_ru: null`, поле обязательное) пропускаются и перечисляются в отчёте, остальные загружаются; поправьте JSON и запустите импорт ещё раз. Статус не переносится: все записи получают `planned`. Постеры и описания импорт не подтягивает: после него запустите `docker compose exec api python -m scripts.enrich --category anime --limit 5 --dry-run` (нужны ключи в `.env`), затем без `--dry-run`.
 
-**Восстановление из автобэкапа** — те же команды `pg_restore` с файлом из `./backups`, постеры: `tar -xzf backups/posters_….tar.gz -C <папка>` и копирование в том `episodio_posters`. Обновление версии: `git pull && docker compose up -d --build`. Копии из `./backups` стоит периодически забирать с сервера на другой диск.
+**Восстановление из автобэкапа** — те же команды `pg_restore` с файлом из `./backups`, постеры: `sudo tar -xzf backups/posters_….tar.gz -C media/posters && sudo chown -R 1000:1000 media/posters`. Обновление версии: `git pull && docker compose up -d --build`. Копии из `./backups` стоит периодически забирать с сервера на другой диск.
 
 ## Тесты
 

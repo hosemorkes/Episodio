@@ -38,7 +38,9 @@ services:
       db:
         condition: service_healthy
     volumes:
-      - posters:/app/media/posters
+      # Постеры лежат в папке хоста: видны на сервере, не удаляются командами docker volume. Владелец папки: uid 1000
+      # (chown -R 1000:1000 media/posters), под ним работает api
+      - ./media/posters:/app/media/posters
       # data/enrich_review.json (записи для ручного выбора после scripts.enrich) переживает пересборку образа
       - appdata:/app/data
     healthcheck:
@@ -76,7 +78,7 @@ services:
       BACKUP_KEEP: ${BACKUP_KEEP:-14}
     volumes:
       - ./deploy/backup.sh:/backup.sh:ro
-      - posters:/posters:ro
+      - ./media/posters:/posters:ro
       - ./backups:/backups
     entrypoint: ["sh", "/backup.sh"]
     depends_on:
@@ -85,7 +87,6 @@ services:
 
 volumes:
   pgdata:
-  posters:
   appdata:
 
 networks:
