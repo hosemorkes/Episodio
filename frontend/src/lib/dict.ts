@@ -324,7 +324,6 @@ export const DICT: Record<string, string> = {
  "Поиск": "Search",
  "Меню": "Menu",
  "Редактировать": "Edit",
- "Открыть в новом окне": "Open in new window",
  "Отметить серию": "Mark episode",
  "серия топ, но концовка слита": "great episode, but the ending is rushed",
  "Минус серия": "Previous episode",

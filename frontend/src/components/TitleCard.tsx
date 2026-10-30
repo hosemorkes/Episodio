@@ -40,13 +40,14 @@ export function TitleCard({ it }: { it: Title }) {
       tabIndex={0}
       aria-label={displayName(it, lang)}
       onClick={open}
-      onAuxClick={(e) => {
-        // средняя кнопка мыши
+      onMouseDown={(e) => {
+        // Средняя кнопка (колесо): в новую вкладку; preventDefault гасит автопрокрутку браузера
         if (e.button === 1) {
           e.preventDefault();
           openNewWindow();
         }
       }}
+      onAuxClick={(e) => e.button === 1 && e.preventDefault()}
       onKeyDown={(e) => e.key === "Enter" && open(e)}
       drag="x"
       dragSnapToOrigin
@@ -71,16 +72,6 @@ export function TitleCard({ it }: { it: Title }) {
         className="absolute top-1.5 right-1.5 flex size-11 items-center justify-center rounded-full bg-[rgba(15,23,42,.45)] font-display text-lg font-semibold text-slate-200 backdrop-blur-[8px] transition-colors hover:bg-[rgba(45,212,191,.35)]"
       >
         ✎
-      </button>
-      <button
-        type="button"
-        aria-label={t("Открыть в новом окне")}
-        title={t("Открыть в новом окне")}
-        onClick={(e) => { e.stopPropagation(); openNewWindow(); }}
-        onPointerDown={(e) => e.stopPropagation()}
-        className="absolute top-12 right-1.5 flex size-11 items-center justify-center rounded-full bg-[rgba(15,23,42,.45)] font-display text-lg font-semibold text-slate-200 backdrop-blur-[8px] transition-colors hover:bg-[rgba(45,212,191,.35)]"
-      >
-        ↗
       </button>
       <div className="absolute inset-x-0 bottom-0 flex items-end gap-2.5 bg-[linear-gradient(transparent,rgba(15,23,42,.92)_40%)] p-3.5">
         <div className="min-w-0 flex-1">
