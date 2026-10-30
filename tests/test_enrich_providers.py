@@ -407,7 +407,7 @@ def add_anime(db, **overrides):
 
 def anime_candidate():
     return Candidate(source="fake", external_id="anime:1", title="Атака титанов", original_title="Shingeki no Kyojin",
-                     year=2013, poster_url="https://shikimori.io/system/animes/original/1.jpg")
+                     year=2013, poster_url="https://shikimori.io/system/animes/original/1.jpg", description="Синопсис")
 
 
 def run(db, row, provider, dry_run=False):
@@ -430,7 +430,7 @@ def test_run_enrich_fills_genres_from_details(db, posters_dir):
 
 
 def test_run_enrich_skips_details_when_genres_already_set(db, posters_dir):
-    row = add_anime(db, genres=["мои жанры"])
+    row = add_anime(db, genres=["мои жанры"], description="Моё описание")
     provider = DetailedProvider(anime_candidate())
 
     run(db, row, provider)
@@ -620,3 +620,43 @@ def test_search_by_titles_returns_everything_found_when_nothing_matches():
     # для ручного выбора: все найденные без повторов
     assert search_by_titles(item(release_year=None), fetch) == [first, second]
     assert search_by_titles(item(title_ru=None, title_original=None), fetch) == []
+
+
+def test_clean_description_strips_markup():
+    from backend.enrich.base import clean_description
+
+    raw = "[character=1]Эрен[/character] хочет [[вырваться]]<br><br>за <i>стены</i>.  [spoiler=x]тайна[/spoiler]"
+    assert clean_description(raw) == "Эрен хочет вырваться\nза стены. тайна"
+    assert clean_description("   ") is None and clean_description(None) is None
+    assert len(clean_description("а" * 5000)) == 2000
+
+
+def test_clean_description_keeps_only_russian():
+    from backend.enrich.base import clean_description
+
+    assert clean_description("A young man fights titans to save humanity.") is None
+    assert clean_description("Eren (Эрен) fights.") is None  # кириллицы меньше половины
+    assert clean_description("Эрен сражается с титанами (Attack on Titan).") is not None
+
+
+def test_shikimori_fill_details_adds_clean_description(monkeypatch):
+    provider, requests = shikimori()
+    candidate = provider.search(item())[0]
+    monkeypatch.setattr(provider, "_get", lambda path, params=None: {"genres": [], "description": "[b]Сюжет[/b] про титанов"})
+    assert provider.fill_details(candidate).description == "Сюжет про титанов"
+
+
+def test_run_enrich_fills_description_but_keeps_manual_one(db, posters_dir):
+    empty = add_anime(db)
+    manual = add_anime(db, title_ru="Свой", title_original="Own", description="Моё описание")
+    provider = DetailedProvider(anime_candidate())
+
+    run(db, empty, provider)
+    db.expire_all()
+    assert db.get(MediaItem, empty.id).description == "Синопсис"
+
+    provider.candidate = Candidate(source="fake", external_id="anime:2", title="Свой", original_title="Own",
+                                   year=2013, poster_url="https://shikimori.io/x.jpg", description="Чужое")
+    run(db, manual, provider)
+    db.expire_all()
+    assert db.get(MediaItem, manual.id).description == "Моё описание"

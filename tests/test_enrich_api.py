@@ -296,7 +296,7 @@ def test_apply_uses_details_for_missing_genres(client, use_enricher, posters_dir
 
 
 def test_apply_skips_details_when_genres_known(client, use_enricher, posters_dir):
-    item = create_item(client, genres=["мои жанры"])
+    item = create_item(client, genres=["мои жанры"], description="Моё описание")
     provider = FakeProviderWithDetails([candidate("1", genres=[])])
     use_enricher(provider=provider)
 

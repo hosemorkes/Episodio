@@ -14,6 +14,7 @@ import httpx
 
 from backend.enrich.base import (
     Candidate,
+    clean_description,
     ProviderAuthError,
     ProviderConfigError,
     ProviderError,
@@ -154,4 +155,5 @@ class TVDBProvider:
             poster_url=result.get("image_url") or None,
             genres=translate_genres(result.get("genres") or []),
             country=COUNTRY_NAMES.get(code) if code else None,
+            description=clean_description((result.get("overviews") or {}).get(RUSSIAN)),
         )

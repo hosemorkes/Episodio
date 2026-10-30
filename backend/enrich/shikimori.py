@@ -11,7 +11,7 @@ from dataclasses import replace
 from typing import Optional
 from urllib.parse import urljoin, urlparse
 
-from backend.enrich.base import Candidate, ProviderConfigError, ProviderError, search_by_titles
+from backend.enrich.base import Candidate, ProviderConfigError, ProviderError, clean_description, search_by_titles
 from backend.enrich.client import HttpFetcher
 
 DEFAULT_BASE_URL = "https://shikimori.io"
@@ -71,7 +71,7 @@ class ShikimoriProvider:
         return [self._to_candidate(kind, result) for result in results]
 
     def fill_details(self, candidate: Candidate) -> Candidate:
-        """Жанры по-русски в нижнем регистре и общее число серий или глав: в списке результатов их нет, они приходят с карточкой."""
+        """Жанры по-русски в нижнем регистре, описание и общее число серий или глав: в списке результатов их нет, они приходят с карточкой."""
         kind, _, shiki_id = candidate.external_id.partition(":")
         resource = next(res for res, k in RESOURCES.values() if k == kind)
         data = self._get(f"/api/{resource}/{shiki_id}")
@@ -79,7 +79,12 @@ class ShikimoriProvider:
         # 0 — число неизвестно (идущий тайтл): в базе это NULL, а не «всего 0»
         total = data.get("episodes" if kind == "anime" else "chapters") or None
         details = {"total_episodes": total} if kind == "anime" else {"total_chapters": total}
-        return replace(candidate, genres=[name for name in names if name], **details)
+        return replace(
+            candidate,
+            genres=[name for name in names if name],
+            description=candidate.description or clean_description(data.get("description")),
+            **details,
+        )
 
     # --- разбор ответа ---
 

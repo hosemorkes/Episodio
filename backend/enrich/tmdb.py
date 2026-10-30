@@ -5,7 +5,7 @@ from typing import Optional
 
 import httpx
 
-from backend.enrich.base import Candidate, ProviderAuthError, ProviderConfigError, ProviderError, search_by_titles
+from backend.enrich.base import Candidate, ProviderAuthError, ProviderConfigError, ProviderError, clean_description, search_by_titles
 from backend.enrich.client import HttpFetcher
 
 API_BASE = "https://api.themoviedb.org/3"
@@ -167,5 +167,6 @@ class TMDBProvider:
             poster_url=f"{IMAGE_BASE}{poster_path}" if poster_path else None,
             genres=[genres[i] for i in result.get("genre_ids", []) if i in genres],
             country=country,
+            description=clean_description(result.get("overview")),
             rating=round(vote, 1) if (vote := result.get("vote_average")) else None,
         )

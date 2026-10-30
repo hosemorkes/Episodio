@@ -18,8 +18,12 @@ export function TitleCard({ it }: { it: Title }) {
   const dragged = useRef(false);
   const u = unitOf(it.type, t);
 
-  const open = () => {
-    if (!dragged.current) router.push(`/title/${it.id}`);
+  const openNewWindow = () => window.open(`/title/${it.id}`, "_blank", "noopener");
+  const open = (e?: { ctrlKey: boolean; metaKey: boolean; shiftKey: boolean }) => {
+    if (dragged.current) return;
+    // Ctrl/Cmd/Shift + клик — как у обычной ссылки: в новой вкладке или окне
+    if (e && (e.ctrlKey || e.metaKey || e.shiftKey)) openNewWindow();
+    else router.push(`/title/${it.id}`);
   };
   const onDragEnd = (_: unknown, info: PanInfo) => {
     const { x, y } = info.offset;
@@ -36,7 +40,14 @@ export function TitleCard({ it }: { it: Title }) {
       tabIndex={0}
       aria-label={displayName(it, lang)}
       onClick={open}
-      onKeyDown={(e) => e.key === "Enter" && open()}
+      onAuxClick={(e) => {
+        // средняя кнопка мыши
+        if (e.button === 1) {
+          e.preventDefault();
+          openNewWindow();
+        }
+      }}
+      onKeyDown={(e) => e.key === "Enter" && open(e)}
       drag="x"
       dragSnapToOrigin
       dragElastic={0.25}
@@ -60,6 +71,16 @@ export function TitleCard({ it }: { it: Title }) {
         className="absolute top-1.5 right-1.5 flex size-11 items-center justify-center rounded-full bg-[rgba(15,23,42,.45)] font-display text-lg font-semibold text-slate-200 backdrop-blur-[8px] transition-colors hover:bg-[rgba(45,212,191,.35)]"
       >
         ✎
+      </button>
+      <button
+        type="button"
+        aria-label={t("Открыть в новом окне")}
+        title={t("Открыть в новом окне")}
+        onClick={(e) => { e.stopPropagation(); openNewWindow(); }}
+        onPointerDown={(e) => e.stopPropagation()}
+        className="absolute top-12 right-1.5 flex size-11 items-center justify-center rounded-full bg-[rgba(15,23,42,.45)] font-display text-lg font-semibold text-slate-200 backdrop-blur-[8px] transition-colors hover:bg-[rgba(45,212,191,.35)]"
+      >
+        ↗
       </button>
       <div className="absolute inset-x-0 bottom-0 flex items-end gap-2.5 bg-[linear-gradient(transparent,rgba(15,23,42,.92)_40%)] p-3.5">
         <div className="min-w-0 flex-1">

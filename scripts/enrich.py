@@ -1,4 +1,4 @@
-"""Обогащение карточек данными из внешних API (постер, жанры, страна, год, автор).
+"""Обогащение карточек данными из внешних API (постер, жанры, страна, год, описание, автор).
 
 Провайдер выбирается по категории: TMDB (сериалы, фильмы, телепередачи; если ключа нет, то TheTVDB), TheTVDB
 (мультсериалы; если ключа нет, то TMDB), Shikimori (аниме, манга), Open Library (книги, аудиокниги).
@@ -44,7 +44,7 @@ ROOT = Path(__file__).resolve().parent.parent
 REVIEW_PATH = ROOT / "data" / "enrich_review.json"
 
 # Поля, которые умеет дополнять обогащение
-ENRICHABLE_FIELDS = ("poster_url", "genres", "country", "release_year")
+ENRICHABLE_FIELDS = ("poster_url", "genres", "country", "release_year", "description")
 
 
 @dataclass
@@ -132,7 +132,7 @@ def run_enrich(
 
         # Часть данных (жанры Shikimori) не приходит в результатах поиска: подгружаем для одного выбранного кандидата
         fill_details = getattr(provider, "fill_details", None)
-        if fill_details and is_empty(item.genres):
+        if fill_details and (is_empty(item.genres) or is_empty(item.description)):
             try:
                 candidate = fill_details(candidate)
             except (httpx.HTTPError, ProviderError) as e:

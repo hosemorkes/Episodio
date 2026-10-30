@@ -468,6 +468,7 @@ def add_from_catalog(body: CatalogAddRequest, db: Session = Depends(get_db), enr
         author=candidate.author,
         country=candidate.country,
         release_year=candidate.year,
+        description=candidate.description,
         total_episodes=candidate.total_episodes,
         total_chapters=candidate.total_chapters,
         status=body.status,
@@ -535,7 +536,9 @@ def enrich_apply(
             )
 
         fill_details = getattr(provider, "fill_details", None)
-        if fill_details and is_empty(db_item.genres) and is_empty(candidate.genres):
+        needs_genres = is_empty(db_item.genres) and is_empty(candidate.genres)
+        needs_description = is_empty(db_item.description) and is_empty(candidate.description)
+        if fill_details and (needs_genres or needs_description):
             candidate = fill_details(candidate)
 
         poster_path = None

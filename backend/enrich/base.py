@@ -18,6 +18,7 @@ class Candidate:
     genres: list[str] = field(default_factory=list)
     country: Optional[str] = None
     author: Optional[str] = None
+    description: Optional[str] = None  # краткое описание на русском (другие языки отбрасывает clean_description); поиск отдаёт его не у всех источников, остальным его подгружает fill_details
     rating: Optional[float] = None  # оценка источника по 10-балльной шкале, если он её отдаёт
     total_episodes: Optional[int] = None  # заполняет fill_details, если источник знает общее число серий
     total_chapters: Optional[int] = None
@@ -154,6 +155,41 @@ def pick_match(item, candidates: list[Candidate]) -> Optional[Candidate]:
     return matches[0] if len(matches) == 1 else None
 
 
+DESCRIPTION_LIMIT = 2000
+_BBCODE = re.compile(r"\[/?[A-Za-z_]+(?:=[^\]]*)?\]")
+_WIKI_LINK = re.compile(r"\[\[(.*?)\]\]")
+_HTML_BREAK = re.compile(r"<\s*br\s*/?\s*>", re.IGNORECASE)
+_HTML_TAG = re.compile(r"<[^>]+>")
+_CYRILLIC = re.compile(r"[А-Яа-яЁё]")
+_LETTER = re.compile(r"[^\W\d_]")
+
+
+def clean_description(text: Optional[str], limit: int = DESCRIPTION_LIMIT) -> Optional[str]:
+    """Русское описание без BBCode Shikimori ([character=1]…[/character]) и HTML; абзацы сохраняются, длина ограничена.
+
+    Текст не на русском (нет перевода у источника) отбрасывается: вернётся None, и поле останется пустым.
+    """
+    if not text:
+        return None
+    text = _HTML_BREAK.sub("\n", text)
+    text = _WIKI_LINK.sub(r"\1", text)
+    text = _BBCODE.sub("", text)
+    text = _HTML_TAG.sub("", text)
+    paragraphs = [" ".join(line.split()) for line in text.splitlines()]
+    text = "\n".join(p for p in paragraphs if p).strip()
+    if len(text) > limit:
+        text = text[: limit - 1].rstrip() + "…"
+    if not text or not is_russian(text):
+        return None
+    return text
+
+
+def is_russian(text: str) -> bool:
+    """Больше половины букв — кириллица: описания на английском и других языках в базу не попадают."""
+    letters = len(_LETTER.findall(text))
+    return letters > 0 and len(_CYRILLIC.findall(text)) / letters > 0.5
+
+
 def is_empty(value) -> bool:
     if value is None:
         return True
@@ -176,6 +212,7 @@ def apply_candidate(item, candidate: Candidate, poster_url: Optional[str] = None
         "country": candidate.country,
         "release_year": candidate.year,
         "author": candidate.author,
+        "description": candidate.description,
     }
     changed = []
     for name, value in values.items():

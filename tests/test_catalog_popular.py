@@ -369,3 +369,10 @@ def test_add_from_catalog_details_error_still_creates_item_without_totals(client
     response = client.post("/items/from-catalog", json=add_body())
     assert response.status_code == 201
     assert response.json()["total_episodes"] is None
+
+
+def test_tmdb_candidate_gets_description_from_overview():
+    provider, _ = tmdb({"/movie/popular": load_fixture("tmdb_search_tv.json")})
+    descriptions = [c.description for c in provider.popular("movie", 5)]
+    assert "Хэнк Муди — писатель, потерявший вдохновение." in descriptions
+    assert None in descriptions  # пустой overview не превращается в пустую строку

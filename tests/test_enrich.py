@@ -481,14 +481,16 @@ def reload(db, row):
 def test_needs_enrichment(db):
     assert needs_enrichment(add(db))
     full = add(db, title_ru="Полная", title_original="Full", poster_url="/posters/9.jpg", genres=["драма"],
-               country="США", release_year=2000)
+               country="США", release_year=2000, description="Есть")
     assert not needs_enrichment(full)
+    assert needs_enrichment(add(db, title_ru="Без описания", poster_url="/posters/8.jpg", genres=["драма"],
+                                country="США", release_year=2000))
 
 
 def test_select_items_filters(db):
     wanted = add(db)
     add(db, title_ru="Полная", title_original="Full", poster_url="/posters/9.jpg", genres=["драма"],
-        country="США", release_year=2000)
+        country="США", release_year=2000, description="Есть")
     add(db, title_ru="Аниме", title_original="Anime", category="anime")  # провайдера для anime нет
     movie = add(db, title_ru="Фильм", title_original="Movie", category="movie")
 
